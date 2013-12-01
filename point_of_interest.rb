@@ -2,11 +2,12 @@ class PointOfInterest
   # name: String: name of the POI
   # location: Vector[Integer, Integer]: with 2 coordinates (x and y)
   # :influences: Array[Influence]: with 0-n influence instances
-  # size: Float: diameter of the POI in km
+  # radius: Float: diameter of the POI in km
+  # radius: Float: diameter of the POI in km as displayed on the map
   # area: Float: area of the POI in ha (hectare, 10,000 square meters)
-  attr_accessor :name, :location, :influences, :size, :area
+  attr_accessor :name, :location, :influences, :radius, :area, :map_radius
   def initialize(params = {})
-    raise ArgumentError, "location and size required" unless valid_params? params
+    raise ArgumentError, "location" unless valid_params? params
 
     params.each do |key, val|
       send "#{key}=".to_sym, val
@@ -15,18 +16,11 @@ class PointOfInterest
     self.influences = []
   end
 
-  def draw_symbol(params = {})
-    steps = params[:points] * 2
-    x_coordinates = y_coordinates = []
-    steps.times do |i|
-      distance = (i % 2 == 0)? (0.4 * params[:size]) : params[:size]
-      x_coordinates << (location[0] + distance * Math.sin(Math::PI * 2 / steps * i)).to_i
-      y_coordinates << (location[1] + distance * Math.cos(Math::PI * 2 / steps * i)).to_i
+  def display_name
+    if Town === self
+      name_suffix = " (#{type.to_s.upcase[0]}#{(capital)? "-C": ""})"
     end
-    params[:draw].polygon x_coordinates, y_coordinates
-    params[:draw].fill 'black'
-    params[:draw].draw params[:img]
-    params[:img].color_floodfill(location[0], location[1], 'black')
+    "'#{name}#{name_suffix}'"
   end
 
   def influence_magnitude(position)
@@ -35,9 +29,27 @@ class PointOfInterest
     end.inject(0, :+)
   end
 
+  def symbol
+    if Town === self
+      if capital
+        :star
+      else
+        case self.type
+        when :metropolis then :rectangle
+        when :city then :hollow_rectangle
+        when :town then :circle
+        when :village then :hollow_circle
+        end
+      end
+    end
+  end
+
+  def map_radius
+    [radius * 5, 2].max
+  end
+
   private
   def valid_params? params
-    params.has_key? :location and params[:location].present? and
-      params.has_key? :size and params[:size].present?
+    params.has_key? :location and params[:location].present?
   end
 end

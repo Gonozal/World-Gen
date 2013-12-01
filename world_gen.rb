@@ -4,32 +4,36 @@ require 'RMagick'
 $: << ''
 # Include working directory
 Dir["*.rb"].each do |file|
-  puts file
   require file unless file == "../world_gen.rb"
 end
 
 class MyWindow < Gosu::Window
   def initialize
-    gm = GameMap.new
+    gm = GameMap.new self
+    @canvas = gm.canvas
     super(gm.window_size, gm.window_size, false)
 
     @bg = Gosu::Image.new(self, Magick::Image.new(gm.window_size, gm.window_size), false)
-    canvas = Magick::Image.new(gm.size, gm.size)
-    draw = GameMap.default_drawer
 
     gm.pois.each do |poi|
-      poi.draw_symbol(points: 5, size: 20, img: canvas, draw: draw)
+      @canvas.draw_poi poi
     end
+    @canvas.draw_grid
 
-    @canvas = Gosu::Image.new(self, canvas, false)
+
+    @map = Gosu::Image.new(self, @canvas.image, false)
   end
 
   def update
   end
 
+  def needs_cursor?
+    true
+  end
+
   def draw
     @bg.draw 0, 0, 0
-    @canvas.draw 10, 10, 1
+    @map.draw 10, 10, 0
   end
 end
 

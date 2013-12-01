@@ -4,11 +4,13 @@ class Town < PointOfInterest
   # npcs: Array[Npc]: list of NPC instances
   # race_fraction: Hash[Symbol => Float]: How each race is represented in this town
   # religion_fraction: Hash[Symbol => Float]: How each religion is representes in this town
-  attr_accessor :population, :type, :npcs, :race_fraction, :religion_fraction
+  # capital: Boolean: Is this town the/a capital of the region?
+  attr_accessor :population, :type, :npcs, :race_fraction, :religion_fraction, :capital
   # alignments: Array[Symbol]: What Alignemts does this town have?
   # magic_propability: Integer: Permille chance a shop will cary magic items
   # exceptional_propability: Integer: Permille chance a shop will cary exceptional items
-  attr_accessor :alignments, :magic_propability, :exceptional_propability
+  # density: Integer: Inhabitants per square kilometer
+  attr_accessor :alignments, :magic_propability, :exceptional_propability, :density
   # shops: Hash[Symbol => Integer]: How many of each profession there are in this town
   # magic_shops: Hash[Symbol => Integer]: How many magic stores of each type there are
   # exceptional_shops: Hash[Symbol => Integer]: Same as above but even rarer
@@ -16,17 +18,17 @@ class Town < PointOfInterest
 
   # City types and what range of possible population densities they have
   DENSITY = {
-    metropolis: 25000..35000,
-    city: 15000..25000,
-    town: 8000..15000,
-    village: 4000..8000
+    metropolis: 10000..25000,
+    city: 6000..10000,
+    town: 4000..6000,
+    village: 1000..4000
   }
   # City types and how many people those corrospond to
   POPULATION = {
     village: 20..1000,
     town: 1000..8000,
-    city: 8000..12000,
-    metropolis: 12000..150000
+    city: 8000..20000,
+    metropolis: 20000..200000
   }
   # How many inhabitants are needed for each business/profession
   SUPPORT_VALUES = {
@@ -128,16 +130,21 @@ class Town < PointOfInterest
     self.npcs = self.alignments = []
     self.race_fraction = self.religion_fraction = {}
     self.shops = self.magic_shops = self.exceptional_shops = {}
+
     params.each do |key, val|
       send "#{key}=".to_sym, val
     end
+
+    population_to_type
+    population_to_radius
     calculate_shops
     prep_shop_hashes
     self.magic_propability ||= 50
+    self.capital ||= false
   end
 
   private
-  # Calculates town type and a rough size based on population
+  # Calculates town type and a rough radius based on population
   def population_to_type
     POPULATION.each do |key, val|
       self.type = key
@@ -145,16 +152,17 @@ class Town < PointOfInterest
     end
   end
 
-  # Calculates town size and area from population amount
-  def population_to_size
+  # Calculates town radius and area from population amount
+  def population_to_radius
     # First, decide where in the town-type population-range we are at
-    percentile = POPULATION[type].instance_eval do
-      (last - population).to_f / (last - first)
-    end
+    range = POPULATION[type]
+    percentile = (population - range.first).to_f / (range.last - range.first)
+
     # Get to the same percentile of the town density
-    density = DENSITY.instance_eval { (last - first).to_f * percentile }
-    # Set size (meaning diameter) of the town
-    self.size = (population / (density * 3.142)) ** 0.5 * 2
+    self.density = DENSITY[type].first +
+      (DENSITY[type].last - DENSITY[type].first).to_f * percentile
+    # Set radius of the town
+    self.radius = (population / (self.density * 3.142)) ** 0.5
   end
 
   # Goes through the list of possible shops and assigns them according to population
@@ -176,6 +184,7 @@ class Town < PointOfInterest
       self.exceptional_shops[key] = 0
     end
   end
+
 
   # Goes through (some) shops and rolls to see if they carry magic or even rarer items
   def calculate_magic_shops
