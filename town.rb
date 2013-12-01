@@ -5,11 +5,14 @@ class Town < PointOfInterest
   # race_fraction: Hash[Symbol => Float]: How each race is represented in this town
   # religion_fraction: Hash[Symbol => Float]: How each religion is representes in this town
   attr_accessor :population, :type, :npcs, :race_fraction, :religion_fraction
-  # alignments: Array[Integer]: What Alignemts does this town have?
-  # businesses: Hash[Symbol => Integer]: How many of each profession there are in this town
-  # magic_businesses: Hash[Symbol => Integer]: How many magic stores of each type there are
-  # exceptional_businesses: Hash[Symbol => Integer]: Same as above but even rarer
-  attr_accessor :businesses, :magic_businesses, :exceptional_businesses
+  # alignments: Array[Symbol]: What Alignemts does this town have?
+  # magic_propability: Integer: Permille chance a shop will cary magic items
+  # exceptional_propability: Integer: Permille chance a shop will cary exceptional items
+  attr_accessor :alignments, :magic_propability, :exceptional_propability
+  # shops: Hash[Symbol => Integer]: How many of each profession there are in this town
+  # magic_shops: Hash[Symbol => Integer]: How many magic stores of each type there are
+  # exceptional_shops: Hash[Symbol => Integer]: Same as above but even rarer
+  attr_accessor :shops, :magic_shops, :exceptional_shops
 
   # City types and what range of possible population densities they have
   DENSITY = {
@@ -53,7 +56,7 @@ class Town < PointOfInterest
     advocate: 650,
     clergyman: 80
   }
-  # What businesses have the potential to carry magic items?
+  # What shops have the potential to carry magic items?
   MAGIC_ITEM_TRADER = [:shoemaker, :leatherworker, :tailor, :jeweler, :hatmaker,
                         :magic_shop, :blacksmith, :glovemaker, :woodcarver]
 
@@ -122,10 +125,15 @@ class Town < PointOfInterest
 
   # Sets up empty arrays/hashes for attributes that need it
   def initialize(params = {})
-    self.npcs = []
+    self.npcs = self.alignments = []
     self.race_fraction = self.religion_fraction = {}
-    self.businesses = self.magic_businesses = self.exceptional_businesses = {}
-    super(params)
+    self.shops = self.magic_shops = self.exceptional_shops = {}
+    params.each do |key, val|
+      send "#{key}=".to_sym, val
+    end
+    calculate_shops
+    prep_shop_hashes
+    self.magic_propability ||= 50
   end
 
   private
@@ -149,20 +157,44 @@ class Town < PointOfInterest
     self.size = (population / (density * 3.142)) ** 0.5 * 2
   end
 
-  # Goes through the list of possible businesses and assigns them according to population
-  def calculate_businesses
-    self.businesses = Hash[SUPPORT_VALUES.map do |key, val|
+  # Goes through the list of possible shops and assigns them according to population
+  def calculate_shops
+    self.shops = SUPPORT_VALUES.inject({}) do |h, (key, val)|
       if population / val >= 1
-        amount = val
+        amount = population / val
       else
         amount = (((population / val) ** 2 * 100).to_i > rand(100))? 1 : 0
       end
-      [key, amount]
-    end]
+      h[key] = amount; h
+    end
   end
 
-  # Goes through (some) businesses and rolls to see if they carry magic or even rarer items
-  def calculate_magic_businesses
+  # Make zero-value copies of the shops hash for magic and exceptional shops
+  def prep_shop_hashes
+    shops.each do |key, val|
+      self.magic_shops[key] = 0
+      self.exceptional_shops[key] = 0
+    end
+  end
+
+  # Goes through (some) shops and rolls to see if they carry magic or even rarer items
+  def calculate_magic_shops
+    # Determine exceptional and magic item shop amount
+    shops.each do |key, val|
+      val.times do |i|
+        rnd = rand(1000)      # Roll propability for each individual shop
+        if rnd < exceptional_propability
+          exceptional_shops[key] += 1
+          magic_shops[key] += 1
+        elsif rand(1000) < magic_propability and MAGIC_ITEM_TRADER.include? key
+          shops[key] -= 1
+          magic_shops[key] += 1
+        end
+      end
+    end
+    # Clean up magic and exceptional shops
+    magic_shops.select{ |key, val| val > 0 }
+    exceptional_shops.select{ |key, val| val > 0 }
   end
 
   # Assigns fractions of all clergyman to a religion and calculates cleric and priest count

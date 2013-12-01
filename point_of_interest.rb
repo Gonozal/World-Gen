@@ -15,15 +15,18 @@ class PointOfInterest
     self.influences = []
   end
 
-  def draw_icon(params = {})
+  def draw_symbol(params = {})
     steps = params[:points] * 2
-    coordinates = []
+    x_coordinates = y_coordinates = []
     steps.times do |i|
-      distance = (i % 2 == 0)? (0.5 * params[:size]) : params[:size]
-      coordinates << (location[0] + distance * Math.sin(Math::PI * 2 / steps * i)).to_i
-      coordinates << (location[1] + distance * Math.cos(Math::PI * 2 / steps * i)).to_i
+      distance = (i % 2 == 0)? (0.4 * params[:size]) : params[:size]
+      x_coordinates << (location[0] + distance * Math.sin(Math::PI * 2 / steps * i)).to_i
+      y_coordinates << (location[1] + distance * Math.cos(Math::PI * 2 / steps * i)).to_i
     end
-    params[:img].polyline coordinates, color: :black, closed: true
+    params[:draw].polygon x_coordinates, y_coordinates
+    params[:draw].fill 'black'
+    params[:draw].draw params[:img]
+    params[:img].color_floodfill(location[0], location[1], 'black')
   end
 
   def influence_magnitude(position)

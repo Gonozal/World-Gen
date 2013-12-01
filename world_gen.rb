@@ -1,7 +1,6 @@
 require 'matrix'
 require 'gosu'
-require 'texplay'
-
+require 'RMagick'
 $: << ''
 # Include working directory
 Dir["*.rb"].each do |file|
@@ -9,36 +8,20 @@ Dir["*.rb"].each do |file|
   require file unless file == "../world_gen.rb"
 end
 
-
 class MyWindow < Gosu::Window
   def initialize
     gm = GameMap.new
     super(gm.window_size, gm.window_size, false)
-    self.caption = 'Hello World!'
 
-    @bg = TexPlay.create_image(self, gm.window_size, gm.window_size)
-    @bg.fill 1, 1, color: :white
-
-    @img = TexPlay.create_image(self, gm.size+1, gm.size+1)
-    @img.fill 1, 1, color: :white
+    @bg = Gosu::Image.new(self, Magick::Image.new(gm.window_size, gm.window_size), false)
+    canvas = Magick::Image.new(gm.size, gm.size)
+    draw = GameMap.default_drawer
 
     gm.pois.each do |poi|
-      poi.draw_icon @img
+      poi.draw_symbol(points: 5, size: 20, img: canvas, draw: draw)
     end
 
-
-    # gm.pois.each do |poi|
-    #   size = 8
-    #   offset = size / 2
-    #   offset
-    #   # Draw symbol for POIs
-    # end
-
-    11.times do |i|
-      pos = gm.size / 10 * i
-      @img.line 0, pos, gm.size, pos, thickness: 1, color: :black
-      @img.line pos, 0, pos, gm.size, thickness: 1, color: :black
-    end
+    @canvas = Gosu::Image.new(self, canvas, false)
   end
 
   def update
@@ -46,7 +29,7 @@ class MyWindow < Gosu::Window
 
   def draw
     @bg.draw 0, 0, 0
-    @img.draw 10, 10, 1
+    @canvas.draw 10, 10, 1
   end
 end
 
