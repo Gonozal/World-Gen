@@ -6,7 +6,7 @@ module WorldGen
     # radius: Float: diameter of the POI in km
     # radius: Float: diameter of the POI in km as displayed on the map
     # area: Float: area of the POI in ha (hectare, 10,000 square meters)
-    attr_accessor :name, :influences, :radius
+    attr_accessor :name, :influences, :radius, :game_map
     def initialize(params = {})
       raise ArgumentError, "location" unless valid_params? params
 
@@ -18,10 +18,12 @@ module WorldGen
       if Town === self
         name_suffix = " (#{type.to_s.upcase[0]}#{(capital)? "-C": ""})"
       end
-      if map_radius > 0.5
+      if map_radius > 0.7
         "'#{name}#{name_suffix}'"
+      elsif map_radius > 0.4
+        "'#{name_suffix[2..-2]}'"
       else
-        "'#{name_suffix}'"
+        ""
       end
     end
 
@@ -35,7 +37,7 @@ module WorldGen
       if Town === self
         if capital
           :star
-        elsif map_radius < 0.5
+        elsif map_radius < 0.8
           :dot
         else
           case self.type
@@ -50,7 +52,7 @@ module WorldGen
 
     def draw?
       range = ((0 - map_reach)..(game_map.canvas.size + map_reach))
-      map_radius > 0.3 and map_location.select{ |i| range.include? i}.size == 2
+      map_radius > 0.4 and map_location.select{ |i| range.include? i}.size == 2
     end
 
     # include town in drawn map even if it is this far away

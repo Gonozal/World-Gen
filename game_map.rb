@@ -1,19 +1,23 @@
 module WorldGen
   class GameMap
-    attr_accessor :pois, :terrain, :field_cutoff, :field_max, :zoom, :zoom_to
+    attr_accessor :regions, :pois, :terrain
+    attr_accessor :field_cutoff, :field_max, :zoom, :zoom_to
     attr_accessor :visible_pois
     attr_accessor :zoom, :zoom_to, :zoom_from
     attr_accessor :window, :offset, :size
     attr_accessor :detail_window, :canvas
+    attr_accessor :a_star_map
 
     def initialize(window)
-      self.pois = []; self.terrain = [];
+      self.pois, self.terrain = [];
       self.field_max = 200.0
       self.zoom = 0.0625; self.zoom_to = [0, 0], self.offset = Vector[0, 0]
       self.window = window
 
       self.canvas = Canvas.new(game_map: self, window: self.window)
       self.detail_window = DetailWindow.new(game_map: self, window: self.window)
+
+      self.a_star_map = Array.new
 
       self.visible_pois = (pois << init_map).flatten!.select { |poi| poi.draw? }
       (terrain << init_terrain).flatten!
@@ -124,7 +128,7 @@ module WorldGen
           population: 150000,
           alignments: [:lawful_good, :good]
         ), Town.new(
-          location: Vector[4800, 1600],
+          location: Vector[2800, 2600],
           game_map: self,
           name: "Random Metropolis",
           population: 25000
@@ -139,7 +143,14 @@ module WorldGen
           name: "Random Town",
           population: 3500
         )
-      ]
+      ] + [ 20.times.map do |i|
+          Town.new(
+            location: Vector[rand(100..12000), rand(100..12000)],
+            game_map: self,
+            name: "RND ##{i}",
+            population: rand(100..10000)
+          )
+        end ]
     end
   end
 end

@@ -1,6 +1,6 @@
 module WorldGen
   class Locateable
-    attr_accessor :name, :location, :area, :game_map
+    attr_accessor :name, :location, :area
 
     def initialize(params = {})
       params.each do |key, val|

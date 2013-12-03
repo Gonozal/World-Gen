@@ -53,13 +53,11 @@ module WorldGen
           cp.fill_opacity(0).circle(*circle(params)).fill_opacity(1)
       end
 
-      puts "#{poi.name}: #{game_map.terrain.last.distance poi}"
-
       draw_supporting_land poi if Town === poi
 
       cp.text_align(Magick::CenterAlign).stroke("transparent").pointsize(9)
       cp.text poi.map_location[0], poi.map_location[1] + poi.map_radius + 12,
-              poi.display_name
+              poi.display_name unless poi.display_name.blank?
       cp.draw image
     end
 
@@ -69,6 +67,10 @@ module WorldGen
       cp.stroke("black").fill(terrain.map_color).stroke_width(1).opacity(1)
       cp.polygon(*terrain.map_vertices.map{|v| v.to_a}.flatten)
       cp.draw image
+    end
+
+    def draw_region region
+
     end
 
     # Draws a distance marker on the bottom left (part of the legend)
