@@ -37,9 +37,17 @@ module WorldGen
       cp.draw image
     end
 
-    # Draws a POI (town, outpost..) specific symbol on the map (star, rectangle, cross..)
-    def draw_poi poi
+    def draw_pois
+      return nil if game_map.visible_pois.empty?
       cp = Magick::Draw.new
+      game_map.visible_pois.each do |poi|
+        draw_poi poi, cp
+      end
+      cp.draw image
+    end
+
+    # Draws a POI (town, outpost..) specific symbol on the map (star, rectangle, cross..)
+    def draw_poi(poi, cp)
       cp.stroke("black").stroke_width(1).opacity(1)
       params = { center: poi.map_location, radius: [poi.map_radius, 1].max }
       case poi.symbol
@@ -58,15 +66,28 @@ module WorldGen
       cp.text_align(Magick::CenterAlign).stroke("transparent").pointsize(9)
       cp.text poi.map_location[0], poi.map_location[1] + poi.map_radius + 12,
               poi.display_name unless poi.display_name.blank?
+    end
+
+    def draw_terrains
+      cp = Magick::Draw.new
+      game_map.terrain.each do |terrain|
+        draw_terrain terrain, cp
+      end
       cp.draw image
     end
 
     # Draws Terrain objects to map, color defined in Terrain Class
-    def draw_terrain terrain
-      cp = Magick::Draw.new
-      cp.stroke("black").fill(terrain.map_color).stroke_width(1).opacity(1)
-      cp.polygon(*terrain.map_vertices.map{|v| v.to_a}.flatten)
-      cp.draw image
+    def draw_terrain(terrain, cp)
+      polygons = []
+      terrain.offsets.size.times do |i|
+        polygons << terrain.offsets[terrain.offsets.size - 1 - i]
+      end
+      polygons << terrain.polygon
+
+      polygons.each do |p| 
+        cp.stroke(p.stroke_color).fill(p.fill_color).stroke_width(1)
+        cp.polygon(*p.map_vertices.map{|v| v.to_a}.flatten)
+      end
     end
 
     def draw_region region

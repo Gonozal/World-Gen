@@ -1,5 +1,5 @@
 require 'gosu'
-require 'RMagick'
+require 'rmagick'
 $: << ''
 # Include working directory
 Dir["*.rb"].each do |file|
@@ -43,12 +43,12 @@ module WorldGen
         case id
         when Gosu::MsWheelUp
           if @gm.zoom_in([mouse_x - @gm.canvas.padding, mouse_y - @gm.canvas.padding])
-            self.zoom_pause = 0.2
+            self.zoom_pause = 0.5
             redraw_map
           end
         when Gosu::MsWheelDown
           if @gm.zoom_out
-            self.zoom_pause = 0.2
+            self.zoom_pause = 0.5
             redraw_map
           end
         when Gosu::MsLeft
@@ -63,13 +63,9 @@ module WorldGen
     private
     def redraw_map
       @canvas = @gm.new_canvas
-      @gm.visible_pois.each do |poi|
-        @canvas.draw_poi poi
-      end
 
-      @gm.terrain.each do |terrain|
-        @canvas.draw_terrain terrain
-      end
+      @canvas.draw_terrains
+      @canvas.draw_pois
 
       @canvas.draw_grid
       @canvas.draw_distance_marker

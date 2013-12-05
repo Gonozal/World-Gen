@@ -1,6 +1,6 @@
 Object.class_eval do
    def present?
-      !blank?
+    !blank?
    end
 
   def blank?

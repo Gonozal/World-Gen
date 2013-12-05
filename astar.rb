@@ -8,26 +8,24 @@ require 'benchmark'
 class PriorityQueue
   def initialize
     @list = []
+    @i_list = []
   end
 
   def add(priority, item)
     # Add @list.length so that sort is always using Fixnum comparisons,
     # which should be fast, rather than whatever is comparison on `item'
-    # @list << [priority, @list.length, item]
-    i2 = 0
-    @list.each_with_index do |l, i|
-      i2 = i
-      next if l.first < priority
-      break
-    end
+    i2 = @i_list.index do |p|
+      p >= priority
+    end || 0
     @list.insert(i2, [priority, @list.length, item])
-    # @list.sort!
+    @i_list.insert(i2, priority)
     self
   end
   def <<(pritem)
     add(*pritem)
   end
   def next
+    @i_list.shift
     @list.shift[2]
   end
   def empty?
@@ -37,7 +35,7 @@ end
 
 class Astar
   def benchmark(params)
-    Benchmark.bmbm(10) do |results|
+    Benchmark.bm(10) do |results|
       results.report("sorted array") do
         do_quiz_solution params
       end

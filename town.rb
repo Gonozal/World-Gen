@@ -23,13 +23,16 @@ module WorldGen
       self.race_fraction = self.religion_fraction = {}
       self.shops = self.magic_shops = self.exceptional_shops = {}
 
+      params[:location] *= params.fetch(:mult, 16)
+      params.delete(:mult)
+
       super
 
       population_to_type
       population_to_radius
-      calculate_shops
-      prep_shop_hashes
-      add_influences
+      # calculate_shops
+      # prep_shop_hashes
+      # add_influences
       calculate_supporting_radius
       self.magic_propability ||= 50
       self.capital ||= false

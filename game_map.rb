@@ -1,26 +1,27 @@
 module WorldGen
   class GameMap
-    attr_accessor :regions, :pois, :terrain
+    attr_accessor :regions, :pois, :terrain, :streets
     attr_accessor :field_cutoff, :field_max, :zoom, :zoom_to
     attr_accessor :visible_pois
     attr_accessor :zoom, :zoom_to, :zoom_from
     attr_accessor :window, :offset, :size
     attr_accessor :detail_window, :canvas
     attr_accessor :a_star_map
+    attr_accessor :clipper
 
     def initialize(window)
-      self.pois, self.terrain = [];
       self.field_max = 200.0
       self.zoom = 0.0625; self.zoom_to = [0, 0], self.offset = Vector[0, 0]
       self.window = window
 
+      self.a_star_map = Array.new(804){Array.new(804, 100)}
+
       self.canvas = Canvas.new(game_map: self, window: self.window)
       self.detail_window = DetailWindow.new(game_map: self, window: self.window)
 
-      self.a_star_map = Array.new
-
-      self.visible_pois = (pois << init_map).flatten!.select { |poi| poi.draw? }
-      (terrain << init_terrain).flatten!
+      self.pois = init_map.flatten
+      self.visible_pois = pois.select { |poi| poi.draw? }
+      self.terrain = init_terrain.flatten
       generate_cities
     end
 
@@ -99,19 +100,114 @@ module WorldGen
     def init_terrain
       [
         Terrain.new(
-          type: :mountains,
+          type: :mountain,
           game_map: self,
+          mult: 26,
           vertices: [
-            Vector[2000,2000], Vector[2150,2000], Vector[3000, 2200], Vector[3200,3500],
-            Vector[2800,3000], Vector[2300,3200], Vector[2100, 2200]
+            Vector[98, 238], Vector[126, 239], Vector[124, 260], Vector[131, 267],
+            Vector[123, 276], Vector[110, 280], Vector[90, 278], Vector[81, 272],
+            Vector[95, 253]
+          ]
+        ),
+        Terrain.new(
+          type: :mountain,
+          game_map: self,
+          mult: 26,
+          vertices: [
+            Vector[106, 292], Vector[125, 287], Vector[145, 270], Vector[188, 255],
+            Vector[190, 275], Vector[172, 290], Vector[161, 313], Vector[156, 350],
+            Vector[139, 369], Vector[127, 365], Vector[118, 350], Vector[123, 329],
+            Vector[131, 319], Vector[126, 310], Vector[114, 308], Vector[106, 303]
+          ]
+        ),
+        Terrain.new(
+          type: :forest,
+          game_map: self,
+          mult: 26,
+          vertices: [
+            Vector[54, 254], Vector[70, 253], Vector[72, 264], Vector[65, 271],
+            Vector[58, 271], Vector[59, 265], Vector[52, 262]
           ]
         ),
         Terrain.new(
           type: :sea,
           game_map: self,
+          mult: 26,
           vertices: [
-            Vector[5000,5000], Vector[5150,5000], Vector[6000, 5200], Vector[6200,6500],
-            Vector[5800,6000], Vector[5300,6200], Vector[5100, 5200]
+            Vector[0, 494], Vector[0, 449], Vector[46, 427], Vector[68, 426],
+            Vector[65, 440], Vector[102, 447], Vector[114, 432], Vector[136, 437],
+            Vector[139, 457], Vector[157, 461], Vector[168, 452], Vector[231, 468],
+            Vector[269, 464], Vector[282, 446], Vector[282, 420], Vector[299, 394],
+            Vector[314, 390], Vector[316, 422], Vector[303, 435], Vector[311, 451],
+            Vector[343, 446], Vector[349, 435], Vector[343, 424], Vector[352, 413],
+            Vector[357, 418], Vector[374, 413], Vector[382, 381], Vector[364, 358],
+            Vector[375, 350], Vector[402, 353], Vector[425, 367], Vector[436, 359],
+            Vector[457, 375], Vector[468, 379], Vector[477, 377], Vector[476, 365],
+            Vector[494, 349], Vector[494, 467], Vector[475, 475], Vector[453, 494],
+            Vector[172, 494], Vector[137, 475], Vector[94, 481], Vector[83, 480],
+            Vector[47, 489], Vector[40, 494]
+          ]
+        ),
+        Terrain.new(
+          type: :forest,
+          game_map: self,
+          mult: 26,
+          vertices: [
+            Vector[200, 237], Vector[208, 219], Vector[229, 219], Vector[239, 211],
+            Vector[265, 203], Vector[272, 205], Vector[293, 201], Vector[305, 207],
+            Vector[300, 225], Vector[280, 226], Vector[244, 240]
+          ]
+        ),
+        Terrain.new(
+          type: :forest,
+          mult: 26,
+          game_map: self,
+          vertices: [
+            Vector[209, 258], Vector[264, 257], Vector[290, 276], Vector[315, 277],
+            Vector[325, 286], Vector[319, 297], Vector[292, 299], Vector[284, 304],
+            Vector[265, 303], Vector[261, 295], Vector[235, 297], Vector[226, 291],
+            Vector[227, 279], Vector[208, 274]
+          ]
+        ),
+        Terrain.new(
+          type: :forest,
+          game_map: self,
+          mult: 26,
+          vertices: [
+            Vector[130, 200], Vector[175, 174], Vector[212, 141], Vector[231, 143],
+            Vector[241, 159], Vector[250, 162], Vector[256, 179], Vector[250, 181],
+            Vector[242, 177], Vector[230, 185], Vector[233, 193], Vector[230, 206],
+            Vector[211, 207], Vector[192, 215], Vector[170, 236], Vector[163, 241],
+            Vector[159, 246], Vector[151, 245], Vector[152, 235], Vector[136, 229]
+          ]
+        ),
+        Terrain.new(
+          type: :forest,
+          mult: 26,
+          game_map: self,
+          vertices: [
+            Vector[42, 299], Vector[55, 286], Vector[83, 286], Vector[88, 301],
+            Vector[102, 313], Vector[107, 335], Vector[92, 336], Vector[87, 327],
+            Vector[42, 314]
+          ]
+        ),
+        Terrain.new(
+          type: :lake,
+          mult: 26,
+          game_map: self,
+          vertices: [
+            Vector[0, 332], Vector[10, 333], Vector[35, 309], Vector[35, 323],
+            Vector[73, 326], Vector[74, 332], Vector[53, 339], Vector[44, 396],
+            Vector[40, 396], Vector[33, 353], Vector[0, 374]
+          ]
+        ),
+        Terrain.new(
+          type: :swamp,
+          game_map: self,
+          mult: 26,
+          vertices: [
+            Vector[126, 380], Vector[151, 384], Vector[158, 412], Vector[146, 423],
+            Vector[115, 415], Vector[110, 405]
           ]
         )
       ]
@@ -121,36 +217,103 @@ module WorldGen
     def init_map
       [
         Town.new(
-          location: Vector[6400, 6400], 
+          location: Vector[211, 243],
+          mult: 26,
           game_map: self,
           capital: true,
-          name: "Baldurs Gate", 
-          population: 150000,
+          name: "Highmoon",
+          population: 80000,
           alignments: [:lawful_good, :good]
-        ), Town.new(
-          location: Vector[2800, 2600],
+        ),
+        Town.new(
+          location: Vector[375, 275],
+          mult: 26,
           game_map: self,
-          name: "Random Metropolis",
-          population: 25000
-        ), Town.new(
-          location: Vector[9600, 1600],
+          name: "Ordulin",
+          population: 80000,
+          alignments: [:lawful_good, :good]
+        ),
+        Town.new(
+          location: Vector[228, 320],
+          mult: 26,
           game_map: self,
-          name: "Random City",
-          population: 15000
-        ), Town.new(
-          location: Vector[4800, 6400],
+          name: "Archenbridge",
+          population: 80000,
+          alignments: [:lawful_good, :good]
+        ),
+        Town.new(
+          location: Vector[184, 433],
+          mult: 26,
           game_map: self,
-          name: "Random Town",
-          population: 3500
+          name: "Daerlun",
+          population: 80000,
+          alignments: [:lawful_good, :good]
+        ),
+        Town.new(
+          location: Vector[220, 455],
+          mult: 26,
+          game_map: self,
+          name: "Urmlaspyr",
+          population: 80000,
+          alignments: [:lawful_good, :good]
+        ),
+        Town.new(
+          location: Vector[300, 382],
+          mult: 26,
+          game_map: self,
+          name: "Saerloon",
+          population: 80000,
+          alignments: [:lawful_good, :good]
+        ),
+        Town.new(
+          location: Vector[353, 357],
+          mult: 26,
+          game_map: self,
+          name: "Selgaunt",
+          population: 80000,
+          alignments: [:lawful_good, :good]
+        ),
+        Town.new(
+          location: Vector[438, 254],
+          mult: 26,
+          game_map: self,
+          name: "Yhaunn",
+          population: 80000,
+          alignments: [:lawful_good, :good]
+        ),
+        Town.new(
+          location: Vector[13, 305],
+          mult: 26,
+          game_map: self,
+          name: "Arabel",
+          population: 80000,
+          alignments: [:lawful_good, :good]
+        ),
+        Town.new(
+          location: Vector[25, 225],
+          mult: 26,
+          game_map: self,
+          name: "Tilverton Scar",
+          population: 80000,
+          alignments: [:lawful_good, :good]
+        ),
+        Town.new(
+          location: Vector[216, 130],
+          mult: 26,
+          game_map: self,
+          name: "Ashabenford",
+          population: 80000,
+          alignments: [:lawful_good, :good]
+        ),
+        Town.new(
+          location: Vector[471, 196],
+          mult: 26,
+          game_map: self,
+          name: "Scardale",
+          population: 80000,
+          alignments: [:lawful_good, :good]
         )
-      ] + [ 20.times.map do |i|
-          Town.new(
-            location: Vector[rand(100..12000), rand(100..12000)],
-            game_map: self,
-            name: "RND ##{i}",
-            population: rand(100..10000)
-          )
-        end ]
+      ]
     end
   end
 end

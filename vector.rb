@@ -1,6 +1,7 @@
 module WorldGen
   class Vector
     include Enumerable
+    include Comparable
 
     attr_reader :elements
     protected :elements
@@ -10,12 +11,23 @@ module WorldGen
       @elements = array
     end
 
+    def <=>(an_other)
+      each2(an_other) do |e1, e2|
+        return e1 <=> e2 unless e1 == e2
+      end
+    end
+
     def Vector.[](*array)
       new convert_to_array(array, false)
     end
 
     def Vector.elements(array, copy = true)
       new convert_to_array(array, copy)
+    end
+
+    # Returns the normal Vector (2D only)
+    def normal_vector
+      Vector.elements([- @elements[1], @elements[0]], false)
     end
 
     def [](i)
