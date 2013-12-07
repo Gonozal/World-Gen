@@ -21,6 +21,7 @@ module WorldGen
       new convert_to_array(array, false)
     end
 
+
     def Vector.elements(array, copy = true)
       new convert_to_array(array, copy)
     end
@@ -28,6 +29,14 @@ module WorldGen
     # Returns the normal Vector (2D only)
     def normal_vector
       Vector.elements([- @elements[1], @elements[0]], false)
+    end
+
+    def to_i
+      Vector.elements([@elements[0].to_i, @elements[1].to_i])
+    end
+
+    def round(digits = 0)
+      Vector.elements([@elements[0].round(digits), @elements[1].round(digits)])
     end
 
     def [](i)
