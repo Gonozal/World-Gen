@@ -27,6 +27,10 @@ module WorldGen
       end
     end
 
+    def map_supporting_radius
+      supporting_radius * game_map.zoom
+    end
+
     def influence_magnitude(position)
       influences.map do |influence|
         influence.magnitude(position)
@@ -37,7 +41,7 @@ module WorldGen
       if Town === self
         if capital
           :star
-        elsif map_radius < 0.8
+        elsif map_radius < 0.6
           :dot
         else
           case self.type

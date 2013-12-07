@@ -12,12 +12,15 @@ class PriorityQueue
   end
 
   def add(priority, item)
+    priority = priority
     # Add @list.length so that sort is always using Fixnum comparisons,
     # which should be fast, rather than whatever is comparison on `item'
+    len = @list.length
     i2 = @i_list.index do |p|
       p >= priority
-    end || 0
-    @list.insert(i2, [priority, @list.length, item])
+    end || len
+    # puts "index found: #{i2}, list length: #{@i_list.length} (cost: #{priority})"
+    @list.insert(i2, [priority, len, item])
     @i_list.insert(i2, priority)
     self
   end
@@ -26,7 +29,7 @@ class PriorityQueue
   end
   def next
     @i_list.shift
-    @list.shift[2]
+    (@list.shift)[2]
   end
   def empty?
     @list.empty?
@@ -43,9 +46,11 @@ class Astar
   end
 
   def do_quiz_solution(params = {})
+    @game_map = params[:game_map]
     @terrain = params[:terrain]
     @start = params[:start]
-    @goal = params[:goal]
+    @goal = [params[:goal][0], params[:goal][1]]
+    # puts "start: #{@start[0]}, #{@start[1]}"
     if do_find_path
       @path
     else
@@ -69,34 +74,43 @@ class Astar
         return @path
       end
       been_there[spot] = 1
-      spotsfrom(spot).each {|newspot|
+
+      # puts "spot: #{spot[0]}, #{spot[1]}"
+      spotsfrom(spot).each do |newspot|
         next if been_there[newspot[0..1]]
         tcost = @terrain[newspot[0]][newspot[1]] * newspot[2]
         newcost = cost_so_far + tcost
+        # print "candidate: #{newspot[0]}, #{newspot[1]}; "
         pqueue << [newcost + estimate(newspot), [newspot,newpath,newcost]]
-      }
+      end
     end
     return nil
   end
 
   def estimate(spot)
-    (((spot[0] - @goal[0]) ** 2 + (spot[1] - @goal[1]) ** 2) ** 0.5).round
+    x = spot[0]
+    y = spot[1]
+    (((x - @goal[0]) ** 2 + (y - @goal[1]) ** 2) ** 0.5) * 110 * @terrain[x][y] * 0.01
   end
 
   def spotsfrom(spot)
     retval = []
-    vertadds = [0,1]
-    horizadds = [0,1]
+    vertadds = [0,1,2]
+    horizadds = [0,1,2]
     if (spot[0] > 0) then vertadds << -1; end
+    if (spot[0] > 1) then vertadds << -2; end
     if (spot[1] > 0) then horizadds << -1; end
-    vertadds.each{|v| horizadds.each{|h|
-        if (v != 0 or h != 0) then
-          ns = [spot[0] + v, spot[1] + h, ((h + v) % 2 == 0)? 1.41 : 0]
-          if (@terrain[ns[0]] and @terrain[ns[0]][ns[1]]) then
+    if (spot[1] > 1) then horizadds << -2; end
+    vertadds.each do |v|
+      horizadds.each do |h|
+        if (v != 0 or h != 0)
+          ns = [spot[0] + v, spot[1] + h, ((v*v + h*h)**0.5).round(3)]
+          if (@terrain[ns[0]] and @terrain[ns[0]][ns[1]])
             retval << ns
           end
         end
-      }}
+      end
+    end
     retval
   end
 end

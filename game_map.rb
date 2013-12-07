@@ -1,6 +1,6 @@
 module WorldGen
   class GameMap
-    attr_accessor :regions, :pois, :terrain, :streets
+    attr_accessor :regions, :pois, :terrain, :roads
     attr_accessor :field_cutoff, :field_max, :zoom, :zoom_to
     attr_accessor :visible_pois
     attr_accessor :zoom, :zoom_to, :zoom_from
@@ -11,10 +11,10 @@ module WorldGen
 
     def initialize(window)
       self.field_max = 200.0
-      self.zoom = 0.0625; self.zoom_to = [0, 0], self.offset = Vector[0, 0]
+      self.zoom = 0.0625; self.zoom_to = [0, 0]; self.offset = Vector[0, 0]
       self.window = window
 
-      self.a_star_map = Array.new(804){Array.new(804, 100)}
+      # self.a_star_map = Array.new(804){Array.new(804, 100)}
 
       self.canvas = Canvas.new(game_map: self, window: self.window)
       self.detail_window = DetailWindow.new(game_map: self, window: self.window)
@@ -22,7 +22,41 @@ module WorldGen
       self.pois = init_map.flatten
       self.visible_pois = pois.select { |poi| poi.draw? }
       self.terrain = init_terrain.flatten
-      generate_cities
+      self.roads = init_roads
+    end
+
+    def set_terrain_costs
+      size = 804
+      self.a_star_map = Array.new(size){Array.new(size, 100)}
+      t0 = Time.now
+      size.times do |x|
+        size.times do |y|
+          cost = (255 - canvas.cost_image.pixel_color(x, y).red / 257).round
+          a_star_map[x][y] = cost
+        end
+      end
+      puts "Total terrain cost time: #{Time.now - t0}"
+    end
+
+    def update_pois
+      pois.each do |poi|
+        if Town === poi
+          poi.instance_eval { calculate_shops; prep_shop_hashes; add_influences }
+        end
+      end
+    end
+
+    def offset_terrain
+      terrain.each do |t|
+        t.add_offsets
+      end
+    end
+
+    def update_roads
+      roads.each do |r|
+        r.find_path
+        r.interpolate
+      end
     end
 
     # Creates and returns a blank canvas
@@ -54,7 +88,7 @@ module WorldGen
         self.zoom = 0.0625
         self.zoom_to = [4, 4]
         self.offset = Vector[0, 0]
-        self.visible_pois = pois
+        self.visible_pois = pois.select { |poi| poi.draw? }
       when 1
         self.zoom = 0.25
         self.zoom_to = zoom_from
@@ -222,7 +256,7 @@ module WorldGen
           game_map: self,
           capital: true,
           name: "Highmoon",
-          population: 80000,
+          population: 8000,
           alignments: [:lawful_good, :good]
         ),
         Town.new(
@@ -230,7 +264,7 @@ module WorldGen
           mult: 26,
           game_map: self,
           name: "Ordulin",
-          population: 80000,
+          population: 36330,
           alignments: [:lawful_good, :good]
         ),
         Town.new(
@@ -238,7 +272,7 @@ module WorldGen
           mult: 26,
           game_map: self,
           name: "Archenbridge",
-          population: 80000,
+          population: 8000,
           alignments: [:lawful_good, :good]
         ),
         Town.new(
@@ -246,7 +280,7 @@ module WorldGen
           mult: 26,
           game_map: self,
           name: "Daerlun",
-          population: 80000,
+          population: 52477,
           alignments: [:lawful_good, :good]
         ),
         Town.new(
@@ -254,7 +288,7 @@ module WorldGen
           mult: 26,
           game_map: self,
           name: "Urmlaspyr",
-          population: 80000,
+          population: 18000,
           alignments: [:lawful_good, :good]
         ),
         Town.new(
@@ -262,7 +296,7 @@ module WorldGen
           mult: 26,
           game_map: self,
           name: "Saerloon",
-          population: 80000,
+          population: 54496,
           alignments: [:lawful_good, :good]
         ),
         Town.new(
@@ -270,7 +304,7 @@ module WorldGen
           mult: 26,
           game_map: self,
           name: "Selgaunt",
-          population: 80000,
+          population: 56514,
           alignments: [:lawful_good, :good]
         ),
         Town.new(
@@ -278,7 +312,7 @@ module WorldGen
           mult: 26,
           game_map: self,
           name: "Yhaunn",
-          population: 80000,
+          population: 25000,
           alignments: [:lawful_good, :good]
         ),
         Town.new(
@@ -286,7 +320,7 @@ module WorldGen
           mult: 26,
           game_map: self,
           name: "Arabel",
-          population: 80000,
+          population: 30600,
           alignments: [:lawful_good, :good]
         ),
         Town.new(
@@ -294,7 +328,7 @@ module WorldGen
           mult: 26,
           game_map: self,
           name: "Tilverton Scar",
-          population: 80000,
+          population: 50,
           alignments: [:lawful_good, :good]
         ),
         Town.new(
@@ -302,17 +336,100 @@ module WorldGen
           mult: 26,
           game_map: self,
           name: "Ashabenford",
-          population: 80000,
+          population: 455,
           alignments: [:lawful_good, :good]
         ),
         Town.new(
           location: Vector[471, 196],
           mult: 26,
           game_map: self,
-          name: "Scardale",
-          population: 80000,
+          name: "Chandlerscross",
+          population: 5303,
           alignments: [:lawful_good, :good]
         )
+      ]
+    end
+
+    def init_roads
+      [
+        Road.new({
+          mult: 26,
+          start: Vector[13, 305],
+          end: Vector[25, 225],
+          game_map: self
+        }),
+        Road.new({
+          mult: 26,
+          start: Vector[375, 275],
+          end: Vector[211, 243],
+          game_map: self
+        }),
+        Road.new({
+          mult: 26,
+          start: Vector[375, 275],
+          end: Vector[438, 254],
+          game_map: self
+        }),
+        Road.new({
+          mult: 26,
+          start: Vector[375, 275],
+          end: Vector[228, 320],
+          game_map: self
+        }),
+        Road.new({
+          mult: 26,
+          start: Vector[353, 357],
+          end: Vector[300, 382],
+          game_map: self
+        }),
+        Road.new({
+          mult: 26,
+          start: Vector[300, 382],
+          end: Vector[220, 455],
+          game_map: self
+        }),
+        Road.new({
+          mult: 26,
+          start: Vector[300, 382],
+          end: Vector[184, 433],
+          game_map: self
+        }),
+        Road.new({
+          mult: 26,
+          start: Vector[184, 433],
+          end: Vector[228, 320],
+          game_map: self
+        }),
+        Road.new({
+          mult: 26,
+          start: Vector[13, 305],
+          end: Vector[211, 243],
+          game_map: self
+        }),
+        Road.new({
+          mult: 26,
+          start: Vector[216, 130],
+          end: Vector[25, 225],
+          game_map: self
+        }),
+        Road.new({
+          mult: 26,
+          start: Vector[220, 455],
+          end: Vector[184, 433],
+          game_map: self
+        }),
+        Road.new({
+          mult: 26,
+          start: Vector[353, 357],
+          end: Vector[438, 254],
+          game_map: self
+        }),
+        Road.new({
+          mult: 26,
+          start: Vector[375, 275],
+          end: Vector[353, 357],
+          game_map: self
+        })
       ]
     end
   end

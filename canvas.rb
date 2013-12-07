@@ -1,7 +1,7 @@
 module WorldGen
   class Canvas
     attr_accessor :game_map, :window
-    attr_accessor :image, :blank_image
+    attr_accessor :image, :blank_image, :cost_image, :blank_cost_image
     attr_accessor :grid_pieces
     attr_accessor :size, :padding
 
@@ -15,6 +15,10 @@ module WorldGen
       end
 
       self.image = Magick::Image.new(size + 1, size + 1)
+      self.cost_image = Magick::Image.new((size + 1), (size + 1)) do
+        self.background_color = "rgb(155, 155, 155)"
+      end
+      self.blank_cost_image = cost_image.copy
       self.blank_image = image.copy
     end
 
@@ -26,14 +30,19 @@ module WorldGen
     # Replaces old image with a blank one
     def reset
       self.image = blank_image.copy
+      self.cost_image = blank_cost_image.copy
     end
 
     # Draws circle around a poi representing cultivated land
     def draw_supporting_land poi
       cp = Magick::Draw.new
       cp.stroke("transparent").fill("green").opacity(0.2)
-      params = {center: poi.map_location, radius: poi.supporting_radius * game_map.zoom}
-      cp.circle(*circle(params))
+      if poi.map_supporting_radius > 0.6
+        params = {center: poi.map_location, radius: poi.map_supporting_radius}
+        cp.circle(*circle(params))
+      else
+        cp.point(*poi.map_location)
+      end
       cp.draw image
     end
 
@@ -51,7 +60,7 @@ module WorldGen
       cp.stroke("black").stroke_width(1).opacity(1)
       params = { center: poi.map_location, radius: [poi.map_radius, 1].max }
       case poi.symbol
-        when :dot then cp.point(params[:center][0], params[:center][1])
+        when :dot then cp.point(*params[:center])
         when :star then cp.polygon(*star(params))
         when :rectangle then cp.rectangle(*rectangle(params))
         when :hollow_rectangle
@@ -68,25 +77,78 @@ module WorldGen
               poi.display_name unless poi.display_name.blank?
     end
 
-    def draw_terrains
+    def draw_terrains(draw_type = :map)
       cp = Magick::Draw.new
       game_map.terrain.each do |terrain|
-        draw_terrain terrain, cp
+        draw_terrain terrain, cp, draw_type
+      end
+      if draw_type == :map
+        cp.draw image
+      elsif draw_type == :cost
+        cp.draw cost_image
+      end
+    end
+
+    def draw_roads(draw_type = :map)
+      game_map.roads.each do |road|
+        draw_road road, draw_type
+      end if game_map.roads.any?
+    end
+
+    def draw_road(road, draw_type = :map)
+      cp = Magick::Draw.new
+      return nil if road.path.blank?
+      path = road.map_path
+      if draw_type == :cost
+        cp.stroke("white").stroke_width(2).fill_opacity(0).stroke_opacity(0.2)
+        cp.polyline(*road.map_path) if path.present?
+      elsif draw_type == :map
+        cp.stroke("brown").stroke_width(2).fill_opacity(0).stroke_opacity(1)
+        cp.polyline(*road.map_path) if path.present?
+      end
+      if draw_type == :map
+        cp.draw image
+      elsif draw_type == :cost
+        cp.draw cost_image
+      end
+    end
+
+    def draw_costs
+      return nil unless game_map.a_star_map.present?
+      cp = Magick::Draw.new
+      (0..400).each do |x|
+        (400..803).each do |y|
+          cost = game_map.a_star_map[x][y]
+          if cost.present?
+            cp.fill("rgba(#{250-cost}, 10, #{250-cost}, 1)") 
+          else
+            cp.fill("black")
+          end
+          cp.point(x, y)
+        end
       end
       cp.draw image
     end
 
     # Draws Terrain objects to map, color defined in Terrain Class
-    def draw_terrain(terrain, cp)
+    def draw_terrain(terrain, cp, draw_type = :map)
       polygons = []
       terrain.offsets.size.times do |i|
         polygons << terrain.offsets[terrain.offsets.size - 1 - i]
       end
       polygons << terrain.polygon
 
-      polygons.each do |p| 
-        cp.stroke(p.stroke_color).fill(p.fill_color).stroke_width(1)
-        cp.polygon(*p.map_vertices.map{|v| v.to_a}.flatten)
+      polygons.each_with_index do |p, index|
+        case draw_type
+        when :map
+          cp.stroke(p.stroke_color).fill(p.fill_color).stroke_width(1)
+          cp.polygon(*p.map_vertices.map{|v| v.to_a}.flatten)
+        when :cost
+          n = polygons.size - index - 1
+          cp.stroke("transparent").stroke_width(0).fill(terrain.cost_color n)
+          cp.polygon(*p.map_vertices.map{|v| v.to_a}.flatten)
+        else next
+        end
       end
     end
 

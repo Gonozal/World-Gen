@@ -30,9 +30,9 @@ module WorldGen
     end
 
     # Offset and scale vertice coordinates for map rendering
-    def map_vertices
+    def map_vertices(mult = 1)
       vertices.map do |v|
-        (v - game_map.offset) * game_map.zoom
+        (v - game_map.offset) * game_map.zoom * mult
       end
     end
 
@@ -47,18 +47,36 @@ module WorldGen
       # If POI is given instead of location, get location first
       position = position.location if PointOfInterest === position
 
+      x = position[0]
+      y = position[1]
+
       # Use the raycasting technique to determine if point is inside polygon
       # We are in 2D, which makes it easier.
       # We can also choose the direction of the ray, which makes it almost trivial
       # (Choose ray paralell to x-achis
-      pos_x = position[0]
       intersections = 0
 
-      vertices.each_cons(2) do |vertices|
-        x1 = vertices[0][0]
-        x2 = vertices[1][0]
-        if (x1 < pos_x and pos_x < x2) or (x1 > pos_x and pos_x > x2)
-          intersections += 1
+      [vertices, vertices.first].flatten.each_cons(2) do |v1, v2|
+        # Check if we are inside bounding recangle of 2 vertices
+        v1x = v1[0]
+        v1y = v1[1]
+        v2x = v2[0]
+        v2y = v2[1]
+        if (v1y < y and y <= v2y) or (v1y >= y and y > v2y)
+          # check if we are LEFT of or onthe line from v1 to v2 is at this x coordinate
+        cp.polygon(*p.map_vertices.map{|v| v.to_a}.flatten)
+          vx = v2x - v1x
+          vy = v2y - v1y
+          if (x <= v1x and x < v2x)
+            intersections +=1
+          elsif x >= v1x and x > v2x
+            next
+          else
+            x_line = v1x + vx * (y - v1y) / vy
+            if vy == 0 or vx == 0 or x < x_line
+              intersections += 1
+            end
+          end
         end
       end
       return intersections.odd?
@@ -184,6 +202,7 @@ module WorldGen
       y1 = l1[0][1]; y2 = l1[1][1]; y3 = l2[0][1]; y4 = l2[1][1]
 
       denominator = (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4)
+      return false if denominator == 0
       dxy12 = (x1*y2 - y1*x2)
       dxy34 = (x3*y4 - y3*x4)
       x = (dxy12*(x3-x4) - (x1-x2)*dxy34) / denominator

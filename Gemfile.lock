@@ -3,6 +3,7 @@ GEM
   specs:
     gosu (0.7.50)
     rmagick (2.13.2)
+    ruby-prof (0.13.0)
 
 PLATFORMS
   ruby
@@ -10,3 +11,4 @@ PLATFORMS
 DEPENDENCIES
   gosu
   rmagick
+  ruby-prof
