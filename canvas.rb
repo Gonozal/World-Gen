@@ -2,6 +2,7 @@ module WorldGen
   class Canvas
     attr_accessor :game_map, :window
     attr_accessor :image, :blank_image, :cost_image, :blank_cost_image
+    attr_accessor :land_value_image
     attr_accessor :grid_pieces
     attr_accessor :size, :padding
 
@@ -18,6 +19,10 @@ module WorldGen
       self.cost_image = Magick::Image.new((size + 1), (size + 1)) do
         self.background_color = "rgb(155, 155, 155)"
       end
+      self.cost_image = Magick::Image.new((size + 1), (size + 1)) do
+        self.background_color = "rgb(155, 155, 155)"
+      end
+      self.land_value_image = cost_image.copy
       self.blank_cost_image = cost_image.copy
       self.blank_image = image.copy
     end
@@ -31,6 +36,7 @@ module WorldGen
     def reset
       self.image = blank_image.copy
       self.cost_image = blank_cost_image.copy
+      self.land_value_image = blank_cost_image.copy
     end
 
     # Draws circle around a poi representing cultivated land
@@ -46,13 +52,21 @@ module WorldGen
       cp.draw image
     end
 
-    def draw_pois
-      return nil if game_map.visible_pois.empty?
+    def draw_pois(draw_type = :map)
+      return nil if game_map.visible_pois.empty? or draw_type == :cost
       cp = Magick::Draw.new
-      game_map.visible_pois.each do |poi|
-        draw_poi poi, cp
+      case draw_type
+      when :map
+        game_map.visible_pois.each do |poi|
+          draw_poi poi, cp
+        end
+        cp.draw image
+      when :land_value
+        game_map.pois.each do |poi|
+          draw_poi_land_value poi, cp
+        end
+        cp.draw land_value_image
       end
-      cp.draw image
     end
 
     # Draws a POI (town, outpost..) specific symbol on the map (star, rectangle, cross..)
@@ -77,57 +91,51 @@ module WorldGen
               poi.display_name unless poi.display_name.blank?
     end
 
+    def draw_poi_land_value(poi, cp)
+      # reset cp
+      cp.stroke("rgba(0,0,0,0)").fill("rgba(0,0,0,1)").stroke_width(0)
+      case poi
+      when Town
+        # Make sure no other town/city overlaps with existing ones
+        params = { center: poi.map_location }
+        cp.fill("rgba(0,0,0,0.4)")
+        case poi.type
+        when :village, :town
+          # Lower land value around towns and villages (they don't have the draw of a city)
+          params[:radius] = poi.map_supporting_radius * 1.5
+          (params[:radius] > 1)? cp.circle(*circle(params)) : nil
+        when :city, :metropolis
+          cp.fill_opacity(0.2)
+          # Lower land value around cities and metropilises a bit
+          params[:radius] = poi.map_supporting_radius * 0.75
+          (params[:radius] > 1)? cp.fill("rgba(0,0,0,0.7)").circle(*circle(params)) : nil
+          # However, raise land value in a large radius (suburbs)
+          rgb = poi.land_value_offset + 200
+          cp.fill("rgba(#{rgb},#{rgb},#{rgb},0.15)")
+          3.times do |i|
+            params[:radius] = poi.map_supporting_radius * (1 + 0.5 * i)
+            (params[:radius] > 1)? cp.circle(*circle(params)) : nil
+          end
+        end
+        params[:radius] = poi.map_radius * 1.5
+        cp.fill("rgba(0,0,0,1)")
+        (poi.map_radius < 1)? cp.point(*poi.map_location) : cp.circle(*circle(params))
+      end
+    end
+
     def draw_terrains(draw_type = :map)
       cp = Magick::Draw.new
       game_map.terrain.each do |terrain|
         draw_terrain terrain, cp, draw_type
       end
-      if draw_type == :map
+      case draw_type
+      when :map
         cp.draw image
-      elsif draw_type == :cost
+      when :cost
         cp.draw cost_image
+      when :land_value
+        cp.draw land_value_image
       end
-    end
-
-    def draw_roads(draw_type = :map)
-      game_map.roads.each do |road|
-        draw_road road, draw_type
-      end if game_map.roads.any?
-    end
-
-    def draw_road(road, draw_type = :map)
-      cp = Magick::Draw.new
-      return nil if road.path.blank?
-      path = road.map_path
-      if draw_type == :cost
-        cp.stroke("white").stroke_width(2).fill_opacity(0).stroke_opacity(0.2)
-        cp.polyline(*road.map_path) if path.present?
-      elsif draw_type == :map
-        cp.stroke("brown").stroke_width(2).fill_opacity(0).stroke_opacity(1)
-        cp.polyline(*road.map_path) if path.present?
-      end
-      if draw_type == :map
-        cp.draw image
-      elsif draw_type == :cost
-        cp.draw cost_image
-      end
-    end
-
-    def draw_costs
-      return nil unless game_map.a_star_map.present?
-      cp = Magick::Draw.new
-      (0..400).each do |x|
-        (400..803).each do |y|
-          cost = game_map.a_star_map[x][y]
-          if cost.present?
-            cp.fill("rgba(#{250-cost}, 10, #{250-cost}, 1)") 
-          else
-            cp.fill("black")
-          end
-          cp.point(x, y)
-        end
-      end
-      cp.draw image
     end
 
     # Draws Terrain objects to map, color defined in Terrain Class
@@ -147,10 +155,46 @@ module WorldGen
           n = polygons.size - index - 1
           cp.stroke("transparent").stroke_width(0).fill(terrain.cost_color n)
           cp.polygon(*p.map_vertices.map{|v| v.to_a}.flatten)
-        else next
+        when :land_value
+          cp.stroke(terrain.land_value_color(1)).stroke_opacity(0.12)
+          polygon = terrain.polygon.map_vertices.map{|v| v.to_a}.flatten
+          [3, 8, 14, 20].each do |range|
+            range = range * game_map.zoom / 0.0625
+            cp.stroke_width(range).polygon(*polygon).fill("transparent")
+          end
+          cp.stroke_width(0).fill(terrain.land_value_color).opacity(1).stroke_opacity(0)
+          cp.polygon(*polygon)
+          break
         end
       end
     end
+
+    def draw_roads(draw_type = :map)
+      game_map.roads.each do |road|
+        draw_road road, draw_type
+      end if game_map.roads.any?
+    end
+
+    def draw_road(road, draw_type = :map)
+      cp = Magick::Draw.new
+      cp.stroke_width(2).fill_opacity(0)
+      path = road.map_path if road.path.present?
+      return nil if path.blank?
+      case draw_type
+      when  :cost
+        cp.stroke("white").stroke_opacity(0.2).polyline(*road.map_path).draw cost_image
+      when :map
+        cp.stroke("brown").stroke_opacity(1).polyline(*road.map_path).draw image
+      when :land_value
+        cp.stroke("white").stroke_opacity(0.08)
+        [2, 5, 10, 15].each do |range|
+          range = range * game_map.zoom / 0.0625
+          cp.stroke_width(range).polyline(*road.map_path)
+        end
+        cp.draw land_value_image
+      end
+    end
+
 
     def draw_region region
 

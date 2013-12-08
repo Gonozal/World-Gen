@@ -16,17 +16,33 @@ module WorldGen
 
     def costs
       @cost ||= case self.type
-      when :mountain then [200, 180, 160, 140]
+      when :sea then [255, 100, 100, 100]
       when :lake then [255, 150, 125, 115]
       when :swamp then [200, 165, 140, 120]
-      when :sea then [255, 100, 100, 100]
+      when :mountain then [200, 180, 160, 140]
       when :forest then [160, 140, 120, 100]
+      end
+    end
+
+    def land_values
+      @land_value ||= case self.type
+      when :sea then [0, 255]
+      when :lake then [0, 200]
+      when :swamp then [50, 80]
+      when :mountain then [80, 100]
+      when :forest then [100, 120]
+
       end
     end
 
     def cost_color n
       cost = costs[n]
       "rgb(#{255-cost}, #{255-cost}, #{255-cost})"
+    end
+
+    def land_value_color(n = 0)
+      land_value = land_values[n]
+      "rgb(#{land_value}, #{land_value}, #{land_value})"
     end
 
     def offset_widths

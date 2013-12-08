@@ -10,12 +10,11 @@ end
 module WorldGen
   class MyWindow < Gosu::Window
     attr_accessor :zoom_pause
-    attr_accessor :init_step
-    attr_accessor :draw_pathfinding
+    attr_accessor :draw_mode
 
     def initialize
-      self.zoom_pause = @last_frame = 0.0
-      self.init_step = 0
+      self.zoom_pause, @last_frame = 0.0, 0.0
+      self.draw_mode = [:map]
 
       @window = self
       @gm = GameMap.new self
@@ -30,51 +29,43 @@ module WorldGen
 
     def update
       self.zoom_pause -= delta
-      gradually_initialize
+      @gm.gradually_initialize
     end
-
-    def gradually_initialize
-      return nil if init_step > 5
-      case init_step
-      when 0
-        @gm.update_pois
-      when 1
-        @gm.offset_terrain
-        redraw_map
-      when 2
-        @gm.set_terrain_costs
-      when 3
-        @gm.update_roads
-        redraw_map
-      when 4
-        @gm.set_terrain_costs
-      end
-      self.init_step += 1
-    end
-
 
     def draw
       @bg.draw 0, 0, 0
-      @map.draw @gm.canvas.padding, @gm.canvas.padding, 0
       @details.draw @gm.canvas.size + @gm.canvas.padding * 2, @gm.canvas.padding, 0
-      @cost_map.draw @gm.canvas.padding, @gm.canvas.padding, 0 if draw_pathfinding
+
+      padding = @gm.canvas.padding
+      case draw_mode.last
+      when :map
+        @map.draw padding, padding, 0
+      when :cost
+        @cost_map.draw padding, padding, 0
+      when :land_value
+        @land_value_map.draw padding, padding, 0
+      end
     end
 
     def button_up id
       case id
       when Gosu::KbP
-        self.draw_pathfinding = !draw_pathfinding
+        toggle_draw_mode :cost
+      when Gosu::KbM
+        toggle_draw_mode :map
+      when Gosu::KbL
+        toggle_draw_mode :land_value
       end
       if zoom_pause <= 0 and inside_map?
         case id
         when Gosu::MsWheelUp
           if @gm.zoom_in([mouse_x - @gm.canvas.padding, mouse_y - @gm.canvas.padding])
-            self.zoom_pause = 0.5
+            self.zoom_pause = 2
             redraw_map
           end
         when Gosu::MsWheelDown
           if @gm.zoom_out
-            self.zoom_pause = 0.5
+            self.zoom_pause = 2
             redraw_map
           end
         when Gosu::MsLeft
@@ -86,26 +77,32 @@ module WorldGen
       true
     end
 
-    private
     def redraw_map
+      t0 = Time.now
       @canvas = @gm.new_canvas
 
-      @canvas.draw_terrains
-      @canvas.draw_terrains :cost
-      @canvas.draw_pois
+      @canvas.draw_terrains draw_mode.last
+      @canvas.draw_roads draw_mode.last
 
-      @canvas.draw_roads
-      @canvas.draw_roads :cost
+      @canvas.draw_pois draw_mode.last
+
       @canvas.draw_grid
       @canvas.draw_distance_marker
 
       # @gm.canvas.draw_costs
+      case draw_mode.last
+      when :map
+        @map = Gosu::Image.new(self, @canvas.image, false)
+      when :cost
+        @cost_map = Gosu::Image.new(self, @canvas.cost_image, false)
+      when :land_value
+        @land_value_map = Gosu::Image.new(self, @canvas.land_value_image, false)
+      end
       @details = Gosu::Image.new(self, @detail_window.image, false)
-      @map = Gosu::Image.new(self, @canvas.image, false)
-      @canvas.cost_image.resize!(@canvas.size + 1, @canvas.size + 1)
-      @cost_map = Gosu::Image.new(self, @canvas.cost_image, false)
+      puts "redraw time: #{Time.now - t0}"
     end
 
+    private
     def inside_map?
       [mouse_x, mouse_y].each{|m| @gm.canvas.boundaries.include? m}.size == 2
     end
@@ -119,6 +116,17 @@ module WorldGen
       @delta = (@this_frame - @last_frame) / 1000.0
       @last_frame = @this_frame
       @delta
+    end
+
+    def toggle_draw_mode type
+      current_mode = draw_mode.pop
+      if current_mode == type
+        draw_mode.insert(-1, current_mode)
+      else
+        draw_mode.delete(current_mode)
+        draw_mode << current_mode << type
+      end
+      redraw_map
     end
   end
 end

@@ -38,6 +38,11 @@ module WorldGen
       self.capital ||= false
     end
 
+    def land_value_offset
+      max_pop = game_map.sorted_pois.first.population
+      population.to_f / max_pop * 55
+    end
+
     private
     # Calculates town type and a rough radius based on population
     def population_to_type

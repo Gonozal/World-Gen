@@ -1,20 +1,15 @@
 module WorldGen
   class GameMap
-    attr_accessor :regions, :pois, :terrain, :roads
-    attr_accessor :field_cutoff, :field_max, :zoom, :zoom_to
-    attr_accessor :visible_pois
-    attr_accessor :zoom, :zoom_to, :zoom_from
-    attr_accessor :window, :offset, :size
-    attr_accessor :detail_window, :canvas
-    attr_accessor :a_star_map
-    attr_accessor :clipper
+    attr_accessor :window, :detail_window, :canvas, :size
+    attr_accessor :regions, :pois, :sorted_pois, :visible_pois, :terrain, :roads
+    attr_accessor :zoom, :zoom_to, :zoom_from, :offset
+    attr_accessor :a_star_map, :land_values
+    attr_accessor :init_step
 
     def initialize(window)
-      self.field_max = 200.0
-      self.zoom = 0.0625; self.zoom_to = [0, 0]; self.offset = Vector[0, 0]
       self.window = window
-
-      # self.a_star_map = Array.new(804){Array.new(804, 100)}
+      self.init_step = 0
+      self.zoom = 0.0625; self.zoom_to = [0, 0]; self.offset = Vector[0, 0]
 
       self.canvas = Canvas.new(game_map: self, window: self.window)
       self.detail_window = DetailWindow.new(game_map: self, window: self.window)
@@ -25,17 +20,46 @@ module WorldGen
       self.roads = init_roads
     end
 
+    def gradually_initialize
+      return nil if init_step > 5
+      case init_step
+      when 0
+        update_pois
+        sort_pois
+      when 1
+        offset_terrain
+        window.redraw_map
+      when 2
+        canvas.draw_terrains :cost
+        set_terrain_costs
+      when 3
+        update_roads
+        window.redraw_map
+      when 4
+        canvas.draw_roads :cost
+        set_terrain_costs
+      when 5
+        set_land_values
+      end
+      self.init_step += 1
+    end
+
+    # Creates a 2d-Array (x and y) with terrain costs from canvas.cost_image
+    # Obviously requires a call to create the image first
     def set_terrain_costs
+      raise RuntimeError "Requires cost image" if canvas.cost_image.blank?
       size = 804
       self.a_star_map = Array.new(size){Array.new(size, 100)}
-      t0 = Time.now
       size.times do |x|
         size.times do |y|
           cost = (255 - canvas.cost_image.pixel_color(x, y).red / 257).round
           a_star_map[x][y] = cost
         end
       end
-      puts "Total terrain cost time: #{Time.now - t0}"
+    end
+
+    def set_land_values
+      raise RuntimeError "Requires land value image" if canvas.land_value_image.blank?
     end
 
     def update_pois
@@ -127,7 +151,12 @@ module WorldGen
     # Generates Cities based on region population. TODO: implement regions, complete stub
     def generate_cities
       cities = pois.select{|p| Town === p}
-      cities.sort { |a, b| a.population <=> b.population }
+      self.sorted_pois = cities.sort{ |a, b| a.population <=> b.population}
+    end
+
+    def sort_pois
+      cities = pois.select{|p| Town === p}
+      self.sorted_pois = cities.sort{ |a, b| a.population <=> b.population}
     end
 
     # Some Terrain Presets
