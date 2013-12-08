@@ -107,13 +107,15 @@ module WorldGen
         when :city, :metropolis
           cp.fill_opacity(0.2)
           # Lower land value around cities and metropilises a bit
-          params[:radius] = poi.map_supporting_radius * 0.75
-          (params[:radius] > 1)? cp.fill("rgba(0,0,0,0.7)").circle(*circle(params)) : nil
+          [0.75, 1].each do |range|
+            params[:radius] = poi.map_supporting_radius * range
+            (params[:radius] > 1)? cp.fill("rgba(0,0,0,0.4)").circle(*circle(params)) : nil
+          end
           # However, raise land value in a large radius (suburbs)
           rgb = poi.land_value_offset + 200
-          cp.fill("rgba(#{rgb},#{rgb},#{rgb},0.15)")
-          3.times do |i|
-            params[:radius] = poi.map_supporting_radius * (1 + 0.5 * i)
+          cp.fill("rgba(#{rgb},#{rgb},#{rgb},0.08)")
+          [1.5, 2, 2.25, 2.5, 2.67, 2.83, 3].each do |range|
+            params[:radius] = poi.map_supporting_radius * (range)
             (params[:radius] > 1)? cp.circle(*circle(params)) : nil
           end
         end
@@ -158,7 +160,7 @@ module WorldGen
         when :land_value
           cp.stroke(terrain.land_value_color(1)).stroke_opacity(0.12)
           polygon = terrain.polygon.map_vertices.map{|v| v.to_a}.flatten
-          [3, 8, 14, 20].each do |range|
+          [2, 5, 10, 18, 25].each do |range|
             range = range * game_map.zoom / 0.0625
             cp.stroke_width(range).polygon(*polygon).fill("transparent")
           end
@@ -182,15 +184,16 @@ module WorldGen
       return nil if path.blank?
       case draw_type
       when  :cost
-        cp.stroke("white").stroke_opacity(0.2).polyline(*road.map_path).draw cost_image
+        cp.stroke("white").stroke_opacity(0.2).polyline(*path).draw cost_image
       when :map
-        cp.stroke("brown").stroke_opacity(1).polyline(*road.map_path).draw image
+        cp.stroke("brown").stroke_opacity(1).polyline(*path).draw image
       when :land_value
         cp.stroke("white").stroke_opacity(0.08)
-        [2, 5, 10, 15].each do |range|
+        [5, 10, 15].each do |range|
           range = range * game_map.zoom / 0.0625
-          cp.stroke_width(range).polyline(*road.map_path)
+          cp.stroke_width(range).polyline(*path)
         end
+        cp.stroke("rgba(10,10,10,1)").stroke_width(game_map.zoom / 0.0625).polyline(*path)
         cp.draw land_value_image
       end
     end
