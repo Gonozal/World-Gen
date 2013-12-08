@@ -105,18 +105,17 @@ module WorldGen
           params[:radius] = poi.map_supporting_radius * 1.5
           (params[:radius] > 1)? cp.circle(*circle(params)) : nil
         when :city, :metropolis
-          cp.fill_opacity(0.2)
-          # Lower land value around cities and metropilises a bit
-          [0.75, 1].each do |range|
-            params[:radius] = poi.map_supporting_radius * range
-            (params[:radius] > 1)? cp.fill("rgba(0,0,0,0.4)").circle(*circle(params)) : nil
-          end
           # However, raise land value in a large radius (suburbs)
           rgb = poi.land_value_offset + 200
           cp.fill("rgba(#{rgb},#{rgb},#{rgb},0.08)")
           [1.5, 2, 2.25, 2.5, 2.67, 2.83, 3].each do |range|
             params[:radius] = poi.map_supporting_radius * (range)
             (params[:radius] > 1)? cp.circle(*circle(params)) : nil
+          end
+          # Lower land value around cities and metropilises a bit
+          [0.75, 1].each do |range|
+            params[:radius] = poi.map_supporting_radius * range
+            (params[:radius] > 1)? cp.fill("rgba(0,0,0,0.3)").circle(*circle(params)) : nil
           end
         end
         params[:radius] = poi.map_radius * 1.5
