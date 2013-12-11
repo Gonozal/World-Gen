@@ -1,7 +1,7 @@
 module WorldGen
   class GameMap
     attr_accessor :window, :detail_window, :canvas, :size
-    attr_accessor :regions, :pois, :sorted_pois, :visible_pois, :terrain, :roads
+    attr_accessor :regions, :pois, :sorted_pois, :visible_pois, :terrain, :roads, :rivers
     attr_accessor :zoom, :zoom_to, :zoom_from, :offset
     attr_accessor :a_star_map, :land_values
     attr_accessor :init_step
@@ -17,6 +17,7 @@ module WorldGen
       self.pois = init_map.flatten
       self.visible_pois = pois.select { |poi| poi.draw? }
       self.terrain = init_terrain.flatten
+      self.rivers = init_rivers
       self.roads = init_roads
     end
 
@@ -273,6 +274,14 @@ module WorldGen
             Vector[115, 415], Vector[110, 405]
           ]
         )
+      ]
+    end
+
+    def init_rivers
+      [
+        River.new(
+          path: "M420.476,330.13 C397,323,380.391,307.938,370.758,307.531s-13.555,9.909-21.469,14.689c-7.914,4.779-28.842,1.615-43.503,2.26s-38.808-4.109-53.672-10.17s-11.364-51.982-25.989-62.146s-25.177-4.116-32.901-19.015s-30.141-3.932-33.766-12.624s-7.358-31.317-36.158-24.859s-27.24-16.047-47.458-10.169"
+        ),
       ]
     end
 

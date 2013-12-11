@@ -2,7 +2,7 @@ module WorldGen
   class Canvas
     attr_accessor :game_map, :window
     attr_accessor :image, :blank_image, :cost_image, :blank_cost_image
-    attr_accessor :land_value_image
+    attr_accessor :land_value_image, :blank_land_value_image
     attr_accessor :grid_pieces
     attr_accessor :size, :padding
 
@@ -19,10 +19,10 @@ module WorldGen
       self.cost_image = Magick::Image.new((size + 1), (size + 1)) do
         self.background_color = "rgb(155, 155, 155)"
       end
-      self.cost_image = Magick::Image.new((size + 1), (size + 1)) do
+      self.land_value_image = Magick::Image.new((size + 1), (size + 1)) do
         self.background_color = "rgb(155, 155, 155)"
       end
-      self.land_value_image = cost_image.copy
+      self.blank_land_value_image = land_value_image.copy
       self.blank_cost_image = cost_image.copy
       self.blank_image = image.copy
     end
@@ -36,7 +36,7 @@ module WorldGen
     def reset
       self.image = blank_image.copy
       self.cost_image = blank_cost_image.copy
-      self.land_value_image = blank_cost_image.copy
+      self.land_value_image = blank_land_value_image.copy
     end
 
     # Draws circle around a poi representing cultivated land
@@ -124,6 +124,19 @@ module WorldGen
       end
     end
 
+    def draw_rivers(draw_type = :map)
+      game_map.rivers.each do |river|
+        draw_river river
+      end
+    end
+
+    def draw_river river
+      cp = Magick::Draw.new
+      cp.stroke_width(2).fill("rgba(0,0,0,0)").stroke("rgba(0,0,255,1)")
+      cp.path(river.path)
+      cp.draw image
+    end
+
     def draw_terrains(draw_type = :map)
       cp = Magick::Draw.new
       game_map.terrain.each do |terrain|
@@ -179,14 +192,18 @@ module WorldGen
     def draw_road(road, draw_type = :map)
       cp = Magick::Draw.new
       cp.stroke_width(2).fill_opacity(0)
-      path = road.map_path if road.path.present?
-      return nil if path.blank?
+      return nil if road.path.blank?
       case draw_type
       when  :cost
+        path = road.map_path if road.path.present?
         cp.stroke("white").stroke_opacity(0.2).polyline(*path).draw cost_image
       when :map
+        path = road.map_path if road.path.present?
+        puts "drawing road"
+        puts path
         cp.stroke("brown").stroke_opacity(1).polyline(*path).draw image
       when :land_value
+        path = road.map_path if road.path.present?
         cp.stroke("white").stroke_opacity(0.08)
         [5, 10, 15].each do |range|
           range = range * game_map.zoom / 0.0625

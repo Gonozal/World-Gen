@@ -60,12 +60,12 @@ module WorldGen
         case id
         when Gosu::MsWheelUp
           if @gm.zoom_in([mouse_x - @gm.canvas.padding, mouse_y - @gm.canvas.padding])
-            self.zoom_pause = 2
+            self.zoom_pause = 0.5
             redraw_map
           end
         when Gosu::MsWheelDown
           if @gm.zoom_out
-            self.zoom_pause = 2
+            self.zoom_pause = 0.5
             redraw_map
           end
         when Gosu::MsLeft
@@ -85,6 +85,7 @@ module WorldGen
       @canvas.draw_roads draw_mode.last
 
       @canvas.draw_pois draw_mode.last
+      @canvas.draw_rivers
 
       @canvas.draw_grid
       @canvas.draw_distance_marker
@@ -94,7 +95,7 @@ module WorldGen
       when :map
         @map = Gosu::Image.new(self, @canvas.image, false)
       when :cost
-        @cost_map = Gosu::Image.new(self, @canvas.cost_image, false)
+        @cost_map = Gosu::Image.new(self, cost_image, false)
       when :land_value
         @land_value_map = Gosu::Image.new(self, @canvas.land_value_image, false)
       end

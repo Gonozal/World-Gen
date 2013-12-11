@@ -28,8 +28,8 @@ module WorldGen
       t = Time.now
       params = {
         terrain: game_map.a_star_map,
-        start: start / 16,
-        goal: goal / 16,
+        start: (start / 32).to_i * 2,
+        goal: (goal / 32).to_i * 2,
         game_map: game_map
       }
       self.path = astar.do_quiz_solution(params)

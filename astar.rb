@@ -52,11 +52,75 @@ class Astar
     @goal = [params[:goal][0], params[:goal][1]]
     # puts "start: #{@start[0]}, #{@start[1]}"
     if do_find_path
-      @path
+      declutter @path
     else
       return nil
     end
   end
+
+  def declutter(path)
+    anchor = path.first
+    last_point = WorldGen::Vector[anchor[0], anchor[1]]
+
+    i = 0
+    new_path = []
+    until i > path.size - 1
+      skip_to = do_skips(anchor, path[i])
+      if skip_to == true or skip_to == nil
+        last_point = path[i]
+        i += 1
+      else
+        anchor = skip_to
+        new_path << skip_to.to_a
+      end
+    end
+    print "from "
+    print path.last
+    print " to "
+    puts path.first
+    new_path.insert(0, path.first.to_a)
+    new_path.insert(0, path.first.to_a)
+    new_path << path.last.to_a
+    new_path.compact!
+    new_path
+  end
+
+
+  def do_skips(start, goal)
+    cost_start = @terrain[start[0]][start[1]]
+    v = goal - start
+
+    major = (v[0] > v[1])? 0 : 1
+    minor = (1 - major).abs
+
+    v_max = v[major]
+    v_min = v[minor]
+    s0 = start[major]
+    s1 = start[minor]
+    m = v_min.to_f / v_max.to_f
+    x0 = nil
+    x1 = nil
+
+    index = 0
+    v_max.times do |i|
+      x0 = s0 + i + 1
+      x1 = s1 + (m * (i + 1)).round
+      index = i
+      if cost_start != ((major == 0)? @terrain[x0][x1] : @terrain[x1][x0])
+        break
+      end
+    end
+    if (v_max - 1) == index
+      true
+    elsif x0 == nil or x1 == nil
+      nil
+    elsif major == 0
+      WorldGen::Vector[x0, x1]
+    else
+      WorldGen::Vector[x1, x0]
+    end
+  end
+
 
   def do_find_path
     been_there = {}
@@ -70,7 +134,7 @@ class Astar
       newpath = [path_so_far, spot]
       if (spot == @goal)
         @path = []
-        newpath.flatten.each_slice(2) {|i,j| @path << [i,j]}
+        newpath.flatten.each_slice(2) {|i,j| @path << WorldGen::Vector[i,j]}
         return @path
       end
       been_there[spot] = 1
@@ -90,16 +154,14 @@ class Astar
   def estimate(spot)
     x = spot[0]
     y = spot[1]
-    (((x - @goal[0]) ** 2 + (y - @goal[1]) ** 2) ** 0.5) * 110 * @terrain[x][y] * 0.01
+    (((x - @goal[0]) ** 2 + (y - @goal[1]) ** 2) ** 0.5) * 125 * @terrain[x][y] * 0.01
   end
 
   def spotsfrom(spot)
     retval = []
-    vertadds = [0,1,2]
-    horizadds = [0,1,2]
-    if (spot[0] > 0) then vertadds << -1; end
+    vertadds = [0,2]
+    horizadds = [0,2]
     if (spot[0] > 1) then vertadds << -2; end
-    if (spot[1] > 0) then horizadds << -1; end
     if (spot[1] > 1) then horizadds << -2; end
     vertadds.each do |v|
       horizadds.each do |h|

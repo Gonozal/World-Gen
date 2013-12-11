@@ -1,6 +1,6 @@
 module WorldGen
   class Terrain < Locateable
-    attr_accessor :type, :influences, :game_map
+    attr_accessor :type, :influences, :game_map, :name
     attr_accessor :polygon, :offsets
 
     def initialize(params = {})
