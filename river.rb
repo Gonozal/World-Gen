@@ -31,7 +31,7 @@ module WorldGen
         [250 * game_map.zoom, "rgba(255,255,255,0.04)"],
         [150 * game_map.zoom, "rgba(255,255,255,0.04)"],
         [80 * game_map.zoom, "rgba(255,255,255,0.04)"],
-        [50 * game_map.zoom, "rgba(255,255,255,0.04)"],
+        [50 * game_map.zoom, "rgba(255,255,255,0.08)"],
         [1 * mult, "rgba(0,0,0,1)"]
       ]
     end

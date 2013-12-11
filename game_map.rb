@@ -36,6 +36,7 @@ module WorldGen
         set_terrain_costs
       when 3
         update_roads
+        roads.last.path = IMPORTED_PATH.map{|e| Vector[*e] * 16 }
         window.redraw_map
       when 4
         canvas.draw_roads :cost
