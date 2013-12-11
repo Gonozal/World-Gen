@@ -43,6 +43,35 @@ module WorldGen
       population.to_f / max_pop * 55
     end
 
+    def land_values
+      if type == :city or type == :metropolis
+        @land_values ||= positive_land_values + negative_land_values
+      else
+        @land_values ||= negative_land_values
+      end
+    end
+
+
+    def positive_land_values
+      rgb = land_value_offset
+      positive_color = "rgba(#{rgb}, #{rgb}, #{rgb}, 0.15)"
+      @positive_land_values = [
+        [3, positive_color],
+        [2.67, positive_color],
+        [2.25, positive_color],
+        [2, positive_color],
+        [1.5, positive_color]
+      ]
+    end
+
+    def negative_land_values
+      @negative_land_values = [
+        [0.75, "rgba(0,0,0,0.3)"],
+        [1, "rgba(0,0,0,0.3)"],
+        [6, "rgba(0,0,0,0.1)"]
+      ]
+    end
+
     private
     # Calculates town type and a rough radius based on population
     def population_to_type

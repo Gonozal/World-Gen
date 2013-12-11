@@ -22,7 +22,7 @@ module WorldGen
     end
 
     def gradually_initialize
-      return nil if init_step > 5
+      return nil if init_step > 6
       case init_step
       when 0
         update_pois
@@ -32,6 +32,7 @@ module WorldGen
         window.redraw_map
       when 2
         canvas.draw_terrains :cost
+        canvas.draw_rivers :cost
         set_terrain_costs
       when 3
         update_roads
@@ -40,7 +41,12 @@ module WorldGen
         canvas.draw_roads :cost
         set_terrain_costs
       when 5
+        canvas.redraw :land_value
         set_land_values
+      when 6
+        generate_towns
+        self.visible_pois = pois.select { |poi| poi.draw? }
+        window.redraw_map
       end
       self.init_step += 1
     end
@@ -61,6 +67,56 @@ module WorldGen
 
     def set_land_values
       raise RuntimeError "Requires land value image" if canvas.land_value_image.blank?
+      self.land_values = []
+      land_value_i = []
+      size = 264
+      size.times do |x|
+        size.times do |y|
+          x_px = x * 3 + y % 3 + rand(0..10)
+          y_px = y * 3 + 1 + rand(0..10)
+          value = (canvas.land_value_image.pixel_color(x_px, y_px).red / 257).round
+          next if value <= 156
+          len = land_values.length
+          i2 = land_value_i.index do |p|
+            p <= value
+          end || len
+          land_values.insert(i2, [value, x_px, y_px])
+          land_value_i.insert(i2, value)
+        end
+      end
+    end
+
+    def generate_towns
+      used_locations = []
+      land_values.each do |value, x, y|
+        location = Vector[x, y]
+        population = rand(250..7000) + rand(250..7000)
+        next unless legal_new_town_position(used_locations, location, population)
+        return true if pois.size > 75
+        pois << Town.new({
+          location: location,
+          mult: 16,
+          game_map: self,
+          name: "#{x} : #{y}",
+          population: population,
+          alignments: [:lawful_good, :good]
+        })
+        used_locations << location
+      end
+      if pois.size > 100 or land_values.empty?
+        return true
+      else
+        canvas.redraw :land_value
+        set_land_values
+        generate_towns
+      end
+    end
+
+    def legal_new_town_position(used_locations, location, population)
+      used_locations.each do |used_location|
+        return false if (used_location - location).magnitude < 60 + population ** 0.5
+      end
+      true
     end
 
     def update_pois
@@ -299,7 +355,7 @@ module WorldGen
           game_map: self
         ),
         River.new(
-          path: "M362.5,353.832c0,0-8.333-18-11-22s-14.667-10.666-32.667-12.333s-70,2.333-84.667-5.667s-45.333-58.333-45.333-58.333",
+          path: "M372.875,359.375c0,0-8.25-3.961-10.375-5.543s-8.333-18-11-22s-14.667-10.666-32.667-12.333s-70,2.333-84.667-5.667s-45.333-58.333-45.333-58.333",
           scale: 1.61,
           game_map: self
         )

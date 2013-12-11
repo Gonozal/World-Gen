@@ -89,7 +89,7 @@ module WorldGen
 
       @canvas.draw_pois draw_mode.last
       tp = Time.now
-      @canvas.draw_rivers
+      @canvas.draw_rivers draw_mode.last
       tri = Time.now
 
       @canvas.draw_grid
@@ -107,13 +107,13 @@ module WorldGen
         @land_value_map = Gosu::Image.new(self, @canvas.land_value_image, false)
       end
       @details = Gosu::Image.new(self, @detail_window.image, false)
-      # print "redraw time: #{Time.now - t0} ("
-      # print "terrain: #{tt - tc}; "
-      # print "roads: #{tro - tt}; "
-      # print "pois: #{tp - tro}; "
-      # print "rivers: #{tri - tp}; "
-      # print "grid: #{tg - tp}; "
-      # puts "marker: #{td - tg})"
+      print "redraw time: #{Time.now - t0} ("
+      print "terrain: #{tt - tc}; "
+      print "roads: #{tro - tt}; "
+      print "pois: #{tp - tro}; "
+      print "rivers: #{tri - tp}; "
+      print "grid: #{tg - tp}; "
+      puts "marker: #{td - tg})"
     end
 
     private

@@ -26,8 +26,8 @@ module WorldGen
 
     def land_values
       @land_value ||= case self.type
-      when :sea then [0, 255]
-      when :lake then [0, 200]
+      when :sea then [0, 190]
+      when :lake then [0, 190]
       when :swamp then [50, 80]
       when :mountain then [80, 100]
       when :forest then [100, 120]

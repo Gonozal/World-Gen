@@ -39,6 +39,24 @@ module WorldGen
       self.land_value_image = blank_land_value_image.copy
     end
 
+    def redraw type
+      case type
+      when :map then self.image = blank_image.copy
+      when :cost then self.cost_image = blank_cost_image.copy
+      when :land_value then self.land_value_image = blank_land_value_image.copy
+      end
+
+      draw_terrains type
+      draw_roads type
+      draw_pois type
+      draw_rivers type
+
+      if type == :map
+        draw_grid
+        draw_distance_marker
+      end
+    end
+
     # Draws circle around a poi representing cultivated land
     def draw_supporting_land poi
       cp = Magick::Draw.new
@@ -99,24 +117,10 @@ module WorldGen
         # Make sure no other town/city overlaps with existing ones
         params = { center: poi.map_location }
         cp.fill("rgba(0,0,0,0.4)")
-        case poi.type
-        when :village, :town
-          # Lower land value around towns and villages (they don't have the draw of a city)
-          params[:radius] = poi.map_supporting_radius * 1.5
+        poi.land_values.each do |range, color|
+          cp.fill(color)
+          params[:radius] = poi.map_supporting_radius * (range)
           (params[:radius] > 1)? cp.circle(*circle(params)) : nil
-        when :city, :metropolis
-          # However, raise land value in a large radius (suburbs)
-          rgb = poi.land_value_offset + 200
-          cp.fill("rgba(#{rgb},#{rgb},#{rgb},0.08)")
-          [1.5, 2, 2.25, 2.5, 2.67, 2.83, 3].each do |range|
-            params[:radius] = poi.map_supporting_radius * (range)
-            (params[:radius] > 1)? cp.circle(*circle(params)) : nil
-          end
-          # Lower land value around cities and metropilises a bit
-          [0.75, 1].each do |range|
-            params[:radius] = poi.map_supporting_radius * range
-            (params[:radius] > 1)? cp.fill("rgba(0,0,0,0.3)").circle(*circle(params)) : nil
-          end
         end
         params[:radius] = poi.map_radius * 1.5
         cp.fill("rgba(0,0,0,1)")
@@ -126,7 +130,7 @@ module WorldGen
 
     def draw_rivers(draw_type = :map)
       game_map.rivers.each do |river|
-        draw_river river
+        draw_river river, draw_type
       end
     end
 
@@ -136,14 +140,24 @@ module WorldGen
       cp.fill("rgba(0,0,0,0)")
       case draw_type
       when :map
-        cp.stroke_width(2).stroke("rgba(0,0,255,1)")
+        river.colors.each do |range, color|
+          cp.stroke_width(range).stroke(color)
+          cp.path(river.map_path)
+        end
+        cp.draw image
       when :cost
-        cp.stroke_width(2).stroke("rgba(155,155,155,1)")
+        river.costs.each do |range, color|
+          cp.stroke_width(range).stroke(color)
+          cp.path(river.map_path)
+        end
+        cp.draw cost_image
       when :land_value
-        cp.stroke_width(1).stroke("rgba(0,0,0,1)")
+        river.land_values.each do |range, color|
+          cp.stroke_width(range).stroke(color)
+          cp.path(river.map_path)
+        end
+        cp.draw land_value_image
       end
-      cp.path(river.map_path)
-      cp.draw image
     end
 
     def draw_terrains(draw_type = :map)
@@ -213,11 +227,11 @@ module WorldGen
       when :land_value
         path = road.map_path if road.path.present?
         cp.stroke("white").stroke_opacity(0.08)
-        [5, 10, 15].each do |range|
+        [10, 15].each do |range|
           range = range * game_map.zoom / 0.0625
           cp.stroke_width(range).polyline(*path)
         end
-        cp.stroke("rgba(10,10,10,1)").stroke_width(game_map.zoom / 0.0625).polyline(*path)
+        cp.stroke("rgba(0,0,0,1)").stroke_width(game_map.zoom / 0.0625).polyline(*path)
         cp.draw land_value_image
       end
     end
