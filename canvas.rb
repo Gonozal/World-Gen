@@ -199,8 +199,6 @@ module WorldGen
         cp.stroke("white").stroke_opacity(0.2).polyline(*path).draw cost_image
       when :map
         path = road.map_path if road.path.present?
-        puts "drawing road"
-        puts path
         cp.stroke("brown").stroke_opacity(1).polyline(*path).draw image
       when :land_value
         path = road.map_path if road.path.present?

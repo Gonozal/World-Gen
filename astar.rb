@@ -74,10 +74,6 @@ class Astar
         new_path << skip_to.to_a
       end
     end
-    print "from "
-    print path.last
-    print " to "
-    puts path.first
     new_path.insert(0, path.first.to_a)
     new_path.insert(0, path.first.to_a)
     new_path << path.last.to_a
