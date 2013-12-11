@@ -8,14 +8,6 @@ module WorldGen
       self.game_map = params[:game_map]
     end
 
-    def interpolate
-      path = []
-      self.path = self.path.each_with_index do |v, key|
-        path << Vector[*v] * 16 if key % 2 == 0
-      end
-      self.path = path
-    end
-
     def map_path(mult = 1)
       self.path.map do |point|
         p = (point - game_map.offset) * game_map.zoom

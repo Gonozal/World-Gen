@@ -71,14 +71,13 @@ class Astar
         i += 1
       else
         anchor = skip_to
-        new_path << skip_to.to_a
+        new_path << skip_to
       end
     end
-    new_path.insert(0, path.first.to_a)
-    new_path.insert(0, path.first.to_a)
-    new_path << path.last.to_a
+    new_path.insert(0, path.first)
+    new_path << path.last
     new_path.compact!
-    new_path
+    new_path.map{|e| e * 16 }
   end
 
 
@@ -135,12 +134,11 @@ class Astar
       end
       been_there[spot] = 1
 
-      # puts "spot: #{spot[0]}, #{spot[1]}"
       spotsfrom(spot).each do |newspot|
         next if been_there[newspot[0..1]]
         tcost = @terrain[newspot[0]][newspot[1]] * newspot[2]
-        newcost = cost_so_far + tcost
-        # print "candidate: #{newspot[0]}, #{newspot[1]}; "
+        switching_cost = (@terrain[newspot[0]][newspot[1]] - @terrain[spot[0]][spot[1]])
+        newcost = cost_so_far + tcost + switching_cost.abs * 4
         pqueue << [newcost + estimate(newspot), [newspot,newpath,newcost]]
       end
     end
@@ -150,15 +148,15 @@ class Astar
   def estimate(spot)
     x = spot[0]
     y = spot[1]
-    (((x - @goal[0]) ** 2 + (y - @goal[1]) ** 2) ** 0.5) * 125 * @terrain[x][y] * 0.01
+    (((x - @goal[0]) ** 2 + (y - @goal[1]) ** 2) ** 0.5) * 115
   end
 
   def spotsfrom(spot)
     retval = []
-    vertadds = [0,2]
-    horizadds = [0,2]
-    if (spot[0] > 1) then vertadds << -2; end
-    if (spot[1] > 1) then horizadds << -2; end
+    vertadds = [0,1]
+    horizadds = [0,1]
+    if (spot[0] > 1) then vertadds << -1; end
+    if (spot[1] > 1) then horizadds << -1; end
     vertadds.each do |v|
       horizadds.each do |h|
         if (v != 0 or h != 0)

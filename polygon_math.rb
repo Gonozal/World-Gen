@@ -1,14 +1,14 @@
 module WorldGen
   class Polygon
-    # Bounding Rectangle: [Vector[tl_x, tl_y], Vector[br_x, br_y]]: minimum bounding rect
+    # Bounding Box: [Vector[tl_x, tl_y], Vector[br_x, br_y]]: minimum bounding rect
     # Vertices: [Vector[x1, y1], Vector[x2, y2], ... , Vector[xn, yn]]: defining points
-    attr_accessor :vertices, :bounding_rectangle, :game_map, :opacity, :parent
+    attr_accessor :vertices, :bounding_box, :game_map, :opacity, :parent
 
     def initialize(params)
       params.each do |key, val|
         send "#{key}=".to_sym, val if respond_to? "#{key}=".to_sym
       end
-      self.bounding_rectangle = set_bounding_rectangle
+      self.bounding_box = set_bounding_box
       self.opacity ||= 1
     end
 
@@ -32,7 +32,7 @@ module WorldGen
     # Offset and scale vertice coordinates for map rendering
     def map_vertices(mult = 1)
       vertices.map do |v|
-        (v - game_map.offset) * game_map.zoom * mult
+        ((v - game_map.offset) * game_map.zoom * mult).to_a
       end
     end
 
@@ -107,7 +107,7 @@ module WorldGen
       min_dist
     end
 
-    def set_bounding_rectangle
+    def set_bounding_box
       min_x = min_y = 999999
       max_x = max_y = 0
       vertices.each do |v|
@@ -116,12 +116,12 @@ module WorldGen
         max_x = [max_x, v[0]].max
         max_y = [max_y, v[1]].max
       end
-      self.bounding_rectangle = [Vector[min_x, min_y], Vector[max_x, max_y]]
+      self.bounding_box = [Vector[min_x, min_y], Vector[max_x, max_y]]
     end
 
     def random_point_inside
-      candidate_x = (bounding_rectangle[0][0]..bounding_rectangle[1][0])
-      candidate_y = (bounding_rectangle[0][1]..bounding_rectangle[1][1])
+      candidate_x = (bounding_box[0][0]..bounding_box[1][0])
+      candidate_y = (bounding_box[0][1]..bounding_box[1][1])
       return Vector[candidate_x, candidate_y] if contains? Vector[candidate_x, candidate_y]
     end
 

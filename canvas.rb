@@ -71,7 +71,7 @@ module WorldGen
 
     # Draws a POI (town, outpost..) specific symbol on the map (star, rectangle, cross..)
     def draw_poi(poi, cp)
-      cp.stroke("black").stroke_width(1).opacity(1)
+      cp.stroke("black")
       params = { center: poi.map_location, radius: [poi.map_radius, 1].max }
       case poi.symbol
         when :dot then cp.point(*params[:center])
@@ -130,10 +130,19 @@ module WorldGen
       end
     end
 
-    def draw_river river
+    def draw_river(river, draw_type = :map)
+      return false unless river.draw?
       cp = Magick::Draw.new
-      cp.stroke_width(2).fill("rgba(0,0,0,0)").stroke("rgba(0,0,255,1)")
-      cp.path(river.path)
+      cp.fill("rgba(0,0,0,0)")
+      case draw_type
+      when :map
+        cp.stroke_width(2).stroke("rgba(0,0,255,1)")
+      when :cost
+        cp.stroke_width(2).stroke("rgba(155,155,155,1)")
+      when :land_value
+        cp.stroke_width(1).stroke("rgba(0,0,0,1)")
+      end
+      cp.path(river.map_path)
       cp.draw image
     end
 
@@ -161,17 +170,18 @@ module WorldGen
       polygons << terrain.polygon
 
       polygons.each_with_index do |p, index|
+        next if 
         case draw_type
         when :map
           cp.stroke(p.stroke_color).fill(p.fill_color).stroke_width(1)
-          cp.polygon(*p.map_vertices.map{|v| v.to_a}.flatten)
+          cp.polygon(*p.map_vertices.flatten)
         when :cost
           n = polygons.size - index - 1
           cp.stroke("transparent").stroke_width(0).fill(terrain.cost_color n)
-          cp.polygon(*p.map_vertices.map{|v| v.to_a}.flatten)
+          cp.polygon(*p.map_vertices.flatten)
         when :land_value
           cp.stroke(terrain.land_value_color(1)).stroke_opacity(0.12)
-          polygon = terrain.polygon.map_vertices.map{|v| v.to_a}.flatten
+          polygon = terrain.polygon.map_vertices.flatten
           [2, 5, 10, 18, 25].each do |range|
             range = range * game_map.zoom / 0.0625
             cp.stroke_width(range).polygon(*polygon).fill("transparent")

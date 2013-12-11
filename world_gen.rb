@@ -80,27 +80,40 @@ module WorldGen
     def redraw_map
       t0 = Time.now
       @canvas = @gm.new_canvas
+      tc = Time.now
 
       @canvas.draw_terrains draw_mode.last
+      tt = Time.now
       @canvas.draw_roads draw_mode.last
+      tro = Time.now
 
       @canvas.draw_pois draw_mode.last
+      tp = Time.now
       @canvas.draw_rivers
+      tri = Time.now
 
       @canvas.draw_grid
+      tg = Time.now
       @canvas.draw_distance_marker
+      td = Time.now
 
       # @gm.canvas.draw_costs
       case draw_mode.last
       when :map
         @map = Gosu::Image.new(self, @canvas.image, false)
       when :cost
-        @cost_map = Gosu::Image.new(self, cost_image, false)
+        @cost_map = Gosu::Image.new(self, @canvas.cost_image, false)
       when :land_value
         @land_value_map = Gosu::Image.new(self, @canvas.land_value_image, false)
       end
       @details = Gosu::Image.new(self, @detail_window.image, false)
-      puts "redraw time: #{Time.now - t0}"
+      # print "redraw time: #{Time.now - t0} ("
+      # print "terrain: #{tt - tc}; "
+      # print "roads: #{tro - tt}; "
+      # print "pois: #{tp - tro}; "
+      # print "rivers: #{tri - tp}; "
+      # print "grid: #{tg - tp}; "
+      # puts "marker: #{td - tg})"
     end
 
     private
