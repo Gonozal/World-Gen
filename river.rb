@@ -26,12 +26,14 @@ module WorldGen
 
     def land_values
       mult = (game_map.zoom == 1)? 2 : 1
+      rgb = 230 + rand(26)
+      rgba = "rgba(#{rgb},#{rgb},#{rgb},0.04)"
       [
-        [400 * game_map.zoom, "rgba(255,255,255,0.04)"],
-        [250 * game_map.zoom, "rgba(255,255,255,0.04)"],
-        [150 * game_map.zoom, "rgba(255,255,255,0.04)"],
-        [80 * game_map.zoom, "rgba(255,255,255,0.04)"],
-        [50 * game_map.zoom, "rgba(255,255,255,0.08)"],
+        [400 * game_map.zoom, rgba],
+        [250 * game_map.zoom, rgba],
+        [150 * game_map.zoom, rgba],
+        [80 * game_map.zoom, rgba],
+        [50 * game_map.zoom, rgba],
         [1 * mult, "rgba(0,0,0,1)"]
       ]
     end

@@ -15,6 +15,22 @@ module WorldGen
       end.flatten
     end
 
+    def land_values
+      rgb = 230 + rand(26)
+      rgba = "rgba(#{rgb},#{rgb},#{rgb},0.08)"
+      [
+        [10 * game_map.zoom, rgba],
+        [15 * game_map.zoom, rgba]
+      ]
+    end
+
+    def influences
+      [
+        [1280 * game_map.zoom, "rgba(255,255,255,1)"]
+      ]
+    end
+
+
     def find_path
       astar = Astar.new
       t = Time.now

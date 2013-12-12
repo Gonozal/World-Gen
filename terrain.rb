@@ -35,6 +35,13 @@ module WorldGen
       end
     end
 
+    # Draw color and radius for influences map
+    def influences
+      [
+        [0, "rgba(0,0,0,1)"]
+      ]
+    end
+
     def cost_color n
       cost = costs[n]
       "rgb(#{255-cost}, #{255-cost}, #{255-cost})"

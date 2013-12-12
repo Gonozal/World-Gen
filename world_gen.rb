@@ -11,10 +11,12 @@ module WorldGen
   class MyWindow < Gosu::Window
     attr_accessor :zoom_pause
     attr_accessor :draw_mode
+    attr_accessor :maps
 
     def initialize
       self.zoom_pause, @last_frame = 0.0, 0.0
       self.draw_mode = [:map]
+      self.maps = {}
 
       @window = self
       @gm = GameMap.new self
@@ -23,8 +25,6 @@ module WorldGen
       @bg = Gosu::Image.new(
         self, Magick::Image.new((@gm.window_size * 1.5).to_i, @gm.window_size), false
       )
-
-      redraw_map
     end
 
     def update
@@ -34,16 +34,13 @@ module WorldGen
 
     def draw
       @bg.draw 0, 0, 0
-      @details.draw @gm.canvas.size + @gm.canvas.padding * 2, @gm.canvas.padding, 0
 
       padding = @gm.canvas.padding
-      case draw_mode.last
-      when :map
-        @map.draw padding, padding, 0
-      when :cost
-        @cost_map.draw padding, padding, 0
-      when :land_value
-        @land_value_map.draw padding, padding, 0
+      if @details.present?
+        @details.draw @gm.canvas.size + @gm.canvas.padding * 2, @gm.canvas.padding, 0
+      end
+      if @maps[draw_mode.last].present?
+        @maps[draw_mode.last].draw padding, padding, 0
       end
     end
 
@@ -55,6 +52,8 @@ module WorldGen
         toggle_draw_mode :map
       when Gosu::KbL
         toggle_draw_mode :land_value
+      when Gosu::KbO
+        toggle_draw_mode :road_distance
       end
       if zoom_pause <= 0 and inside_map?
         case id
@@ -78,42 +77,11 @@ module WorldGen
     end
 
     def redraw_map
-      t0 = Time.now
-      @canvas = @gm.new_canvas
-      tc = Time.now
+      @canvas = @gm.new_canvas if @canvas.blank?
+      @canvas.redraw draw_mode.last
 
-      @canvas.draw_terrains draw_mode.last
-      tt = Time.now
-      @canvas.draw_roads draw_mode.last
-      tro = Time.now
-
-      @canvas.draw_pois draw_mode.last
-      tp = Time.now
-      @canvas.draw_rivers draw_mode.last
-      tri = Time.now
-
-      @canvas.draw_grid
-      tg = Time.now
-      @canvas.draw_distance_marker
-      td = Time.now
-
-      # @gm.canvas.draw_costs
-      case draw_mode.last
-      when :map
-        @map = Gosu::Image.new(self, @canvas.image, false)
-      when :cost
-        @cost_map = Gosu::Image.new(self, @canvas.cost_image, false)
-      when :land_value
-        @land_value_map = Gosu::Image.new(self, @canvas.land_value_image, false)
-      end
+      maps[draw_mode.last] = Gosu::Image.new(self, @canvas.images[draw_mode.last], false)
       @details = Gosu::Image.new(self, @detail_window.image, false)
-      print "redraw time: #{Time.now - t0} ("
-      print "terrain: #{tt - tc}; "
-      print "roads: #{tro - tt}; "
-      print "pois: #{tp - tro}; "
-      print "rivers: #{tri - tp}; "
-      print "grid: #{tg - tp}; "
-      puts "marker: #{td - tg})"
     end
 
     private

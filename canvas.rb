@@ -1,12 +1,12 @@
 module WorldGen
   class Canvas
     attr_accessor :game_map, :window
-    attr_accessor :image, :blank_image, :cost_image, :blank_cost_image
-    attr_accessor :land_value_image, :blank_land_value_image
+    attr_accessor :images, :blank_images
     attr_accessor :grid_pieces
     attr_accessor :size, :padding
 
     def initialize(params = {})
+      self.images, self.blank_images = {}, {}
       self.size = 804
       self.padding = 10
       self.grid_pieces ||= 12
@@ -15,16 +15,26 @@ module WorldGen
         send "#{key}=".to_sym, val
       end
 
-      self.image = Magick::Image.new(size + 1, size + 1)
-      self.cost_image = Magick::Image.new((size + 1), (size + 1)) do
+      initialize_images
+    end
+
+
+    def initialize_images
+      self.images[:map] = Magick::Image.new(size + 1, size + 1)
+      self.images[:cost] = Magick::Image.new((size + 1), (size + 1)) do
         self.background_color = "rgb(155, 155, 155)"
       end
-      self.land_value_image = Magick::Image.new((size + 1), (size + 1)) do
+      self.images[:land_value] = Magick::Image.new((size + 1), (size + 1)) do
         self.background_color = "rgb(155, 155, 155)"
       end
-      self.blank_land_value_image = land_value_image.copy
-      self.blank_cost_image = cost_image.copy
-      self.blank_image = image.copy
+      self.images[:road_distance] = Magick::Image.new((size + 1), (size + 1)) do
+        self.background_color = "rgb(0, 0, 0)"
+      end
+
+      # Create blank images
+      images.each do |key, val|
+        blank_images[key] = val.copy
+      end
     end
 
     # Returns window-relative min and max position of canvas
@@ -33,17 +43,23 @@ module WorldGen
     end
 
     # Replaces old image with a blank one
-    def reset
-      self.image = blank_image.copy
-      self.cost_image = blank_cost_image.copy
-      self.land_value_image = blank_land_value_image.copy
+    def reset type = :all
+      if type == :all
+        blank_images.each do |key, val|
+          images[key] = val.copy
+        end
+      else
+        self.images[type] = blank_images[type].copy
+      end
     end
 
+
     def redraw type
-      case type
-      when :map then self.image = blank_image.copy
-      when :cost then self.cost_image = blank_cost_image.copy
-      when :land_value then self.land_value_image = blank_land_value_image.copy
+      self.images[type] = self.blank_images[type].copy
+      if type == :road_distance
+        draw_roads type
+        draw_terrains type
+        return true
       end
 
       draw_terrains type
@@ -67,7 +83,7 @@ module WorldGen
       else
         cp.point(*poi.map_location)
       end
-      cp.draw image
+      cp.draw images[:map]
     end
 
     def draw_pois(draw_type = :map)
@@ -78,13 +94,12 @@ module WorldGen
         game_map.visible_pois.each do |poi|
           draw_poi poi, cp
         end
-        cp.draw image
       when :land_value
         game_map.pois.each do |poi|
           draw_poi_land_value poi, cp
         end
-        cp.draw land_value_image
       end
+      cp.draw images[draw_type]
     end
 
     # Draws a POI (town, outpost..) specific symbol on the map (star, rectangle, cross..)
@@ -138,26 +153,26 @@ module WorldGen
       return false unless river.draw?
       cp = Magick::Draw.new
       cp.fill("rgba(0,0,0,0)")
+      # TODO: refactor draw_type into river model
       case draw_type
       when :map
         river.colors.each do |range, color|
           cp.stroke_width(range).stroke(color)
           cp.path(river.map_path)
         end
-        cp.draw image
       when :cost
         river.costs.each do |range, color|
           cp.stroke_width(range).stroke(color)
           cp.path(river.map_path)
         end
-        cp.draw cost_image
       when :land_value
         river.land_values.each do |range, color|
           cp.stroke_width(range).stroke(color)
           cp.path(river.map_path)
         end
-        cp.draw land_value_image
       end
+
+      cp.draw images[draw_type]
     end
 
     def draw_terrains(draw_type = :map)
@@ -165,18 +180,18 @@ module WorldGen
       game_map.terrain.each do |terrain|
         draw_terrain terrain, cp, draw_type
       end
-      case draw_type
-      when :map
-        cp.draw image
-      when :cost
-        cp.draw cost_image
-      when :land_value
-        cp.draw land_value_image
-      end
+      cp.draw images[draw_type]
     end
 
     # Draws Terrain objects to map, color defined in Terrain Class
     def draw_terrain(terrain, cp, draw_type = :map)
+      if draw_type == :road_distance
+        terrain.influences.each do |range, color|
+          cp.stroke(color).stroke_width(range).fill(color)
+        end
+        cp.polygon(*terrain.polygon.map_vertices.flatten)
+        return true
+      end
       polygons = []
       terrain.offsets.size.times do |i|
         polygons << terrain.offsets[terrain.offsets.size - 1 - i]
@@ -184,10 +199,13 @@ module WorldGen
       polygons << terrain.polygon
 
       polygons.each_with_index do |p, index|
-        next if 
         case draw_type
         when :map
           cp.stroke(p.stroke_color).fill(p.fill_color).stroke_width(1)
+          cp.polygon(*p.map_vertices.flatten)
+        when :cost
+          n = polygons.size - index - 1
+          cp.stroke("transparent").stroke_width(0).fill(terrain.cost_color n)
           cp.polygon(*p.map_vertices.flatten)
         when :cost
           n = polygons.size - index - 1
@@ -220,20 +238,23 @@ module WorldGen
       case draw_type
       when  :cost
         path = road.map_path if road.path.present?
-        cp.stroke("white").stroke_opacity(0.2).polyline(*path).draw cost_image
+        cp.stroke("white").stroke_opacity(0.2).polyline(*path)
       when :map
         path = road.map_path if road.path.present?
-        cp.stroke("brown").stroke_opacity(1).polyline(*path).draw image
+        cp.stroke("brown").stroke_opacity(1).polyline(*path)
       when :land_value
         path = road.map_path if road.path.present?
-        cp.stroke("white").stroke_opacity(0.08)
-        [10, 15].each do |range|
-          range = range * game_map.zoom / 0.0625
-          cp.stroke_width(range).polyline(*path)
+        road.land_values.each do |range, color|
+          cp.stroke_width(range).stroke(color).polyline(*path)
         end
-        cp.stroke("rgba(0,0,0,1)").stroke_width(game_map.zoom / 0.0625).polyline(*path)
-        cp.draw land_value_image
+      when :road_distance
+        path = road.map_path if road.path.present?
+        road.influences.each do |range, color|
+          cp.stroke_width(range).stroke(color).polyline(*path)
+        end
       end
+
+      cp.draw images[draw_type]
     end
 
 
@@ -261,7 +282,7 @@ module WorldGen
       end
 
       cp.text(x_end + 25, y + 8, "'kilometer'")
-      cp.draw image
+      cp.draw images[:map]
     end
 
     # Draws grid on the canvas to make navigation easier
@@ -282,7 +303,7 @@ module WorldGen
         grid.line 0, pos, size, pos
         grid.line pos, 0, pos, size
       end
-      grid.draw image
+      grid.draw images[:map]
     end
 
     private

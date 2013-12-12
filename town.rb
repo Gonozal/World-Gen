@@ -40,7 +40,7 @@ module WorldGen
 
     def land_value_offset
       max_pop = game_map.sorted_pois.first.population
-      population.to_f / max_pop * 55
+      population.to_f / max_pop * 200
     end
 
     def land_values
@@ -51,25 +51,34 @@ module WorldGen
       end
     end
 
-
     def positive_land_values
-      rgb = land_value_offset
+      rgb = land_value_offset + rand(26)
       positive_color = "rgba(#{rgb}, #{rgb}, #{rgb}, 0.15)"
       @positive_land_values = [
-        [3, positive_color],
-        [2.67, positive_color],
         [2.25, positive_color],
-        [2, positive_color],
-        [1.5, positive_color]
       ]
+      if type == :metropolis
+        @positive_land_values + [
+          [3, positive_color],
+          [2.67, positive_color],
+          [2, positive_color]
+        ]
+      end
+      @positive_land_values
     end
 
     def negative_land_values
       @negative_land_values = [
-        [0.75, "rgba(0,0,0,0.3)"],
-        [1, "rgba(0,0,0,0.3)"],
-        [6, "rgba(0,0,0,0.1)"]
+        [1, "rgba(0,0,0,0.4)"],
+        [6, "rgba(0,0,0,0.1)"],
+        [12, "rgba(0,0,0,0.02)"]
       ]
+    end
+
+    def self.population_to_type(population)
+      POPULATION.each do |key, val|
+        return key if val.include? population
+      end
     end
 
     private
