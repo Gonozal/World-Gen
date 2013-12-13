@@ -31,7 +31,36 @@ module WorldGen
       when :swamp then [50, 80]
       when :mountain then [80, 100]
       when :forest then [100, 120]
+      end
+    end
 
+    # Stroke colors for terrain
+    def land_value_colors
+      @land_value_colors ||= case self.type
+      when :sea
+        [
+          [5, "rgba(190,190,190,0.15)"],
+          [15, "rgba(190,190,190,0.15)"],
+          [30, "rgba(190,190,190,0.15)"]
+        ]
+      when :lake
+        [
+          [10, "rgba(190,190,190,0.18)"],
+          [20, "rgba(190,190,190,0.18)"]
+        ]
+      when :swamp, :mountain
+        [
+          [15, "rgba(90,90,90,0.3)"]
+        ]
+      when :mountain
+        [
+          [30, "rgba(90,90,90,0.3)"]
+        ]
+      when :forest
+        [
+          [15, "rgba(110,110,110,0.2"],
+          [30, "rgba(110,110,110,0.2"]
+        ]
       end
     end
 

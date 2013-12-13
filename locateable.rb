@@ -9,11 +9,11 @@ module WorldGen
     end
 
     def map_radius
-      radius / game_map.meter_per_pixel
+      radius / region.game_map.meter_per_pixel
     end
 
     def map_location
-      (location - game_map.offset) * game_map.zoom
+      (location - region.game_map.offset) * region.game_map.zoom
     end
 
     # Vector math to get Distance and Direction

@@ -1,6 +1,6 @@
 module WorldGen
   class Road
-    attr_accessor :start, :goal, :path, :astar, :game_map
+    attr_accessor :start, :goal, :path, :game_map
     def initialize(params)
       params.fetch(:mult, 16)
       self.start = params[:start] * params[:mult]
@@ -24,10 +24,38 @@ module WorldGen
       ]
     end
 
-    def influences
+    def town_influences
       [
-        [1280 * game_map.zoom, "rgba(255,255,255,1)"]
+        [960 * game_map.zoom, "rgba(255,255,255,1)"]
       ]
+    end
+
+    def city_influences
+      [
+        [1600 * game_map.zoom, "rgba(255,255,255,1)"],
+        [960 * game_map.zoom, "rgba(0,0,0,1)"]
+      ]
+    end
+
+    # returns distance and closest point on the path
+    def distance
+      min_dist = 9999999999
+      path.each_cons(2) do |points|
+        c_v, o_v = *points
+        r = ((c_v - o_v) * (position - o_v)) / (position - o_v).magnitude
+
+        if r < 0
+          dist = [(position - o_v).magnitude, o_v]
+        elsif r > 1
+          dist = [(c_v - position).magnitude, c_v]
+        else
+          dist = (position - o_v).magnitude ** 2 - r * (c_v - o_v).magnitude ** 2
+          dist = [dist, ov + r * (c_v - o_v)]
+        end
+
+        min_dist = [dist, min_dist].min
+      end
+      min_dist
     end
 
 

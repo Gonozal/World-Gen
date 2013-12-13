@@ -6,7 +6,7 @@ module WorldGen
     # radius: Float: diameter of the POI in km
     # radius: Float: diameter of the POI in km as displayed on the map
     # area: Float: area of the POI in ha (hectare, 10,000 square meters)
-    attr_accessor :name, :influences, :radius, :game_map
+    attr_accessor :name, :influences, :radius, :region
     def initialize(params = {})
       raise ArgumentError, "location" unless valid_params? params
 
@@ -28,7 +28,7 @@ module WorldGen
     end
 
     def map_supporting_radius
-      supporting_radius * game_map.zoom
+      supporting_radius * region.game_map.zoom
     end
 
     def influence_magnitude(position)
@@ -55,7 +55,7 @@ module WorldGen
     end
 
     def draw?
-      range = ((0 - map_reach)..(game_map.canvas.size + map_reach))
+      range = ((0 - map_reach)..(region.game_map.canvas.size + map_reach))
       map_radius > 0.4 and map_location.select{ |i| range.include? i}.size == 2
     end
 

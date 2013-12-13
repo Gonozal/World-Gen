@@ -18,23 +18,18 @@ module WorldGen
     def pois
       regions.map {|region| region.pois }.flatten
     end
-
     def visible_pois
       regions.map {|region| region.visible_pois }.flatten
     end
-
     def terrain
       regions.map {|region| region.terrain }.flatten
     end
-
     def roads
       regions.map {|region| region.roads }.flatten
     end
-
     def rivers
       regions.map {|region| region.rivers }.flatten
     end
-
     def sorted_pois
       regions.map {|region| region.pois}.flatten.sort {|a, b| a.population <=> b.population}
     end
@@ -43,6 +38,7 @@ module WorldGen
       return nil if init_step > 6
       case init_step
       when 0
+      @t0 = Time.now
         self.regions = init_region
         regions.each do |region|
           region.initialize_imports
@@ -52,6 +48,7 @@ module WorldGen
           region.after_initialize
         end
         window.redraw_map
+        puts "Startup time: #{Time.now - @t0}"
       end
       self.init_step += 1
     end
@@ -60,36 +57,42 @@ module WorldGen
     # Obviously requires a call to create the image first
     def set_terrain_costs
       raise RuntimeError "Requires cost image" if canvas.images[:cost].blank?
-      size = 804
+      t0 = Time.now
+      size = 805
       self.a_star_map = Array.new(size){Array.new(size, 100)}
-      size.times do |x|
-        size.times do |y|
-          cost = (255 - canvas.images[:cost].pixel_color(x, y).red / 257).round
-          a_star_map[x][y] = cost
-        end
+      canvas.images[:cost].each_pixel do |pixel, x, y|
+        cost = (255 - pixel.red / 257).round
+        self.a_star_map[x][y] = cost
       end
+      puts "Terrain costs extracted in #{Time.now - t0}"
     end
 
     def set_land_values
       raise RuntimeError "Requires land value image" if canvas.images[:land_value].blank?
+      t0 = Time.now
+      @land_value_iteration = 0
       self.land_values = []
       land_value_i = []
-      size = 264
+      size = 200
       size.times do |x|
         size.times do |y|
-          x_px = x * 3 + y % 3 + rand(0..10)
-          y_px = y * 3 + 1 + rand(0..10)
+          x_px = x * 4 + y % 4 + rand(0..10)
+          y_px = y * 4 + 1 + rand(0..10)
+          town_value = (canvas.images[:town_distance].pixel_color(x_px, y_px).red / 257)
+          city_value = (canvas.images[:city_distance].pixel_color(x_px, y_px).red / 257)
+          next if town_value < 200 and city_value < 200
           value = (canvas.images[:land_value].pixel_color(x_px, y_px).red / 257)
-          road_value = (canvas.images[:road_distance].pixel_color(x_px, y_px).red / 257)
-          next if value <= 156 or road_value < 200
+          next if value <= 156
           len = land_values.length
           i2 = land_value_i.index do |p|
             p <= value
           end || len
-          land_values.insert(i2, [value, x_px, y_px])
+          land_values.insert(i2, [(town_value > 200)? :town : :city, x_px, y_px])
           land_value_i.insert(i2, value)
         end
       end
+      @land_value_iteration += 1
+      puts "land values extracted in #{Time.now - t0}"
     end
 
 
@@ -101,13 +104,6 @@ module WorldGen
     # Creates and returns a blank detail window
     def new_detail_window
       detail_window.reset; detail_window
-    end
-
-    # Gets field magnitude for a position. TODO: rewrite to account for multiple types
-    def field_magnitude(position)
-      [ pois.map do |poi|
-          poi.influence_magnitude(position)
-        end.inject(0, :+), field_max].min / field_max
     end
 
     def window_size

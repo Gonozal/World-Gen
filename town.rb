@@ -30,16 +30,13 @@ module WorldGen
 
       population_to_type
       population_to_radius
-      # calculate_shops
-      # prep_shop_hashes
-      # add_influences
       calculate_supporting_radius
       self.magic_propability ||= 50
       self.capital ||= false
     end
 
     def land_value_offset
-      max_pop = game_map.sorted_pois.first.population
+      max_pop = region.game_map.sorted_pois.first.population
       population.to_f / max_pop * 200
     end
 
@@ -51,6 +48,13 @@ module WorldGen
       end
     end
 
+    def city_influences
+      [
+        [6, "rgba(255,255,255,1)"],
+        [4, "rgba(0,0,0,1)"]
+      ]
+    end
+
     def positive_land_values
       rgb = land_value_offset + rand(26)
       positive_color = "rgba(#{rgb}, #{rgb}, #{rgb}, 0.15)"
@@ -59,9 +63,7 @@ module WorldGen
       ]
       if type == :metropolis
         @positive_land_values + [
-          [3, positive_color],
-          [2.67, positive_color],
-          [2, positive_color]
+          [3.25, positive_color]
         ]
       end
       @positive_land_values
@@ -69,9 +71,8 @@ module WorldGen
 
     def negative_land_values
       @negative_land_values = [
-        [1, "rgba(0,0,0,0.4)"],
-        [6, "rgba(0,0,0,0.1)"],
-        [12, "rgba(0,0,0,0.02)"]
+        [1.5, "rgba(0,0,0,0.4)"],
+        [6, "rgba(0,0,0,0.1)"]
       ]
     end
 
@@ -79,6 +80,40 @@ module WorldGen
       POPULATION.each do |key, val|
         return key if val.include? population
       end
+    end
+
+    def self.generate(land_values, region, type)
+      @towns_tbg ||= region.needed_towns
+      used_locations = []
+      land_values.each do |land_type, x, y|
+        return true if @towns_tbg.empty?
+        location = Vector[x, y]
+        next unless legal_new_town_position(used_locations, location, @towns_tbg.first[1])
+        population = @towns_tbg.shift[1]
+        region.pois << Town.new({
+          location: location,
+          mult: 16,
+          region: region,
+          name: "#{x}:#{y}",
+          population: population,
+          alignments: [:lawful_good, :good]
+        })
+        used_locations << location
+      end
+      if land_values.empty?
+        return true
+      else
+        region.game_map.canvas.redraw :land_value
+        region.game_map.set_land_values
+        generate(region.game_map.land_values, region, type)
+      end
+    end
+
+    def self.legal_new_town_position(used_locations, location, population)
+      used_locations.each do |used_location|
+        return false if (used_location - location).magnitude < 60 + population ** 0.5
+      end
+      true
     end
 
     private
@@ -116,7 +151,7 @@ module WorldGen
     end
 
     def calculate_supporting_radius
-      self.supporting_radius = (population / (180 * Math::PI)) ** 0.5 / game_map.zoom
+      self.supporting_radius = (population / (180 * Math::PI)) ** 0.5 / region.game_map.zoom
     end
 
     # Make zero-value copies of the shops hash for magic and exceptional shops
@@ -147,11 +182,5 @@ module WorldGen
       magic_shops.select{ |key, val| val > 0 }
       exceptional_shops.select{ |key, val| val > 0 }
     end
-
-    def add_influences
-      influence = Influence.new(parent: self, multiplier: population ** 0.5)
-      self.influences << influence
-    end
-    # Assigns fractions of all clergyman to a religion and calculates cleric and priest count
   end
 end

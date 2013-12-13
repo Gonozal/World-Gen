@@ -25,6 +25,7 @@ module WorldGen
       @bg = Gosu::Image.new(
         self, Magick::Image.new((@gm.window_size * 1.5).to_i, @gm.window_size), false
       )
+      @canvas = @gm.new_canvas
     end
 
     def update
@@ -39,9 +40,8 @@ module WorldGen
       if @details.present?
         @details.draw @gm.canvas.size + @gm.canvas.padding * 2, @gm.canvas.padding, 0
       end
-      if @maps[draw_mode.last].present?
-        @maps[draw_mode.last].draw padding, padding, 0
-      end
+      @maps[draw_mode.last] = Gosu::Image.new(self, @canvas.images[draw_mode.last], false)
+      @maps[draw_mode.last].draw padding, padding, 0
     end
 
     def button_up id
@@ -53,7 +53,9 @@ module WorldGen
       when Gosu::KbL
         toggle_draw_mode :land_value
       when Gosu::KbO
-        toggle_draw_mode :road_distance
+        toggle_draw_mode :town_distance
+      when Gosu::KbI
+        toggle_draw_mode :city_distance
       end
       if zoom_pause <= 0 and inside_map?
         case id
@@ -77,10 +79,7 @@ module WorldGen
     end
 
     def redraw_map
-      @canvas = @gm.new_canvas if @canvas.blank?
       @canvas.redraw draw_mode.last
-
-      maps[draw_mode.last] = Gosu::Image.new(self, @canvas.images[draw_mode.last], false)
       @details = Gosu::Image.new(self, @detail_window.image, false)
     end
 

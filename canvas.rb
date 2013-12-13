@@ -27,7 +27,10 @@ module WorldGen
       self.images[:land_value] = Magick::Image.new((size + 1), (size + 1)) do
         self.background_color = "rgb(155, 155, 155)"
       end
-      self.images[:road_distance] = Magick::Image.new((size + 1), (size + 1)) do
+      self.images[:town_distance] = Magick::Image.new((size + 1), (size + 1)) do
+        self.background_color = "rgb(0, 0, 0)"
+      end
+      self.images[:city_distance] = Magick::Image.new((size + 1), (size + 1)) do
         self.background_color = "rgb(0, 0, 0)"
       end
 
@@ -54,9 +57,10 @@ module WorldGen
     end
 
 
-    def redraw type
-      self.images[type] = self.blank_images[type].copy
-      if type == :road_distance
+    def redraw type = :map
+      t0 = Time.now
+      self.images[type] = blank_images[type].copy
+      if type == :town_distance or type == :city_distance
         draw_roads type
         draw_terrains type
         return true
@@ -71,6 +75,7 @@ module WorldGen
         draw_grid
         draw_distance_marker
       end
+      puts "redrew #{type} in #{Time.now - t0}"
     end
 
     # Draws circle around a poi representing cultivated land
@@ -98,6 +103,10 @@ module WorldGen
         game_map.pois.each do |poi|
           draw_poi_land_value poi, cp
         end
+      when :city_distance
+        game_map.pois.each do |poi|
+          draw_poi_city_distance poi, cp
+        end
       end
       cp.draw images[draw_type]
     end
@@ -124,14 +133,28 @@ module WorldGen
               poi.display_name unless poi.display_name.blank?
     end
 
-    def draw_poi_land_value(poi, cp)
+    def draw_poi_city_distance(poi, cp)
       # reset cp
-      cp.stroke("rgba(0,0,0,0)").fill("rgba(0,0,0,1)").stroke_width(0)
+      cp.stroke("rgba(0,0,0,0)").stroke_width(0)
       case poi
       when Town
         # Make sure no other town/city overlaps with existing ones
         params = { center: poi.map_location }
-        cp.fill("rgba(0,0,0,0.4)")
+        poi.city_influences.each do |range, color|
+          cp.fill(color)
+          params[:radius] = poi.map_supporting_radius * (range)
+          (params[:radius] > 1)? cp.circle(*circle(params)) : nil
+        end
+      end
+    end
+
+    def draw_poi_land_value(poi, cp)
+      # reset cp
+      cp.stroke("rgba(0,0,0,0)").stroke_width(0)
+      case poi
+      when Town
+        # Make sure no other town/city overlaps with existing ones
+        params = { center: poi.map_location }
         poi.land_values.each do |range, color|
           cp.fill(color)
           params[:radius] = poi.map_supporting_radius * (range)
@@ -185,7 +208,7 @@ module WorldGen
 
     # Draws Terrain objects to map, color defined in Terrain Class
     def draw_terrain(terrain, cp, draw_type = :map)
-      if draw_type == :road_distance
+      if draw_type == :town_distance or draw_type == :city_distance
         terrain.influences.each do |range, color|
           cp.stroke(color).stroke_width(range).fill(color)
         end
@@ -212,11 +235,10 @@ module WorldGen
           cp.stroke("transparent").stroke_width(0).fill(terrain.cost_color n)
           cp.polygon(*p.map_vertices.flatten)
         when :land_value
-          cp.stroke(terrain.land_value_color(1)).stroke_opacity(0.12)
           polygon = terrain.polygon.map_vertices.flatten
-          [2, 5, 10, 18, 25].each do |range|
-            range = range * game_map.zoom / 0.0625
-            cp.stroke_width(range).polygon(*polygon).fill("transparent")
+          terrain.land_value_colors.each do |range, color|
+            range = range * 16 * game_map.zoom
+            cp.stroke(color).stroke_width(range).polygon(*polygon).fill("transparent")
           end
           cp.stroke_width(0).fill(terrain.land_value_color).opacity(1).stroke_opacity(0)
           cp.polygon(*polygon)
@@ -233,7 +255,7 @@ module WorldGen
 
     def draw_road(road, draw_type = :map)
       cp = Magick::Draw.new
-      cp.stroke_width(2).fill_opacity(0)
+      cp.stroke_width(2).fill_opacity(0).stroke_linecap("round").stroke_linejoin("round")
       return nil if road.path.blank?
       case draw_type
       when  :cost
@@ -247,9 +269,14 @@ module WorldGen
         road.land_values.each do |range, color|
           cp.stroke_width(range).stroke(color).polyline(*path)
         end
-      when :road_distance
+      when :town_distance
         path = road.map_path if road.path.present?
-        road.influences.each do |range, color|
+        road.town_influences.each do |range, color|
+          cp.stroke_width(range).stroke(color).polyline(*path)
+        end
+      when :city_distance
+        path = road.map_path if road.path.present?
+        road.city_influences.each do |range, color|
           cp.stroke_width(range).stroke(color).polyline(*path)
         end
       end

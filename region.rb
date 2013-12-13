@@ -3,6 +3,7 @@ module WorldGen
     attr_accessor :game_map
     attr_accessor :name, :age, :population
     attr_accessor :pois, :sorted_pois, :visible_pois, :terrain, :roads, :rivers
+    attr_accessor :towns_tbg
 
     def initialize(params = {})
       params.each do |key, val|
@@ -23,9 +24,6 @@ module WorldGen
     end
 
     def after_initialize
-
-      theoretical_town_sizes
-
       # Offset terrain and calculate movement costs from image
       offset_terrain
       game_map.canvas.draw_terrains :cost
@@ -36,20 +34,34 @@ module WorldGen
       # roads.last.path = IMPORTED_PATH.map{|e| Vector[*e] * 16 }
       # Update land values and eligible places for towns (based on distance from roads)
       game_map.canvas.redraw :land_value
-      game_map.canvas.redraw :road_distance
+      game_map.canvas.redraw :town_distance
+      game_map.canvas.redraw :city_distance
       game_map.set_land_values
 
       # generate towns and decide which towns to show
-      generate_towns(game_map.land_values)
+      Town.generate(game_map.land_values, self, :city)
       self.visible_pois = pois.select { |poi| poi.draw? }
     end
 
+    def largest_town
+      if sorted_pois.first.population > population ** 0.5 * 15
+        :existing
+      else
+        :new
+      end
+    end
+
     def theoretical_town_sizes
-      last_size = (population ** 0.5 * 15 * 2.5).round
+      if largest_town == :existing
+        last_size = sorted_pois.first.population
+      else
+        last_size = (population ** 0.5 * 15).round
+      end
       towns = []
+      towns << [Town.population_to_type(last_size), last_size]
       i = 0
       begin
-        modifier = (i < 2)? 0.4 : 0.85
+        modifier = (i < 1)? 0.4 : 0.85
         last_size = (last_size * modifier).round
         type = Town.population_to_type(last_size)
         towns << [type, last_size]
@@ -60,44 +72,20 @@ module WorldGen
         last_size = 7000 - 7000/(i*9) * n + rand(0..1000)
         towns << [:town, last_size]
       end
-
-      towns.each do |t|
-        puts t.inspect
-      end
       puts towns.size
+      towns
     end
 
-    def generate_towns(land_values)
-      used_locations = []
-      land_values.each do |value, x, y|
-        location = Vector[x + rand(3), y + rand(3)]
-        population = rand(250..5000) + rand(250..5000) + rand(250..5000)
-        next unless legal_new_town_position(used_locations, location, population)
-        return true if pois.size > 150
-        pois << Town.new({
-          location: location,
-          mult: 16,
-          game_map: game_map,
-          name: "#{x} : #{y}",
-          population: population,
-          alignments: [:lawful_good, :good]
-        })
-        used_locations << location
-      end
-      if pois.size > 100 or land_values.empty?
-        return true
-      else
-        game_map.canvas.redraw :land_value
-        game_map.set_land_values
-        generate_towns(game_map.land_values)
-      end
-    end
-
-    def legal_new_town_position(used_locations, location, population)
-      used_locations.each do |used_location|
-        return false if (used_location - location).magnitude < 60 + population ** 0.5
-      end
-      true
+    def needed_towns
+      pois_copy = sorted_pois.map{|poi| [poi.type, poi.population]}
+      towns_tbg = theoretical_town_sizes
+      towns_tbg.map do |type, population|
+        if pois_copy.empty?
+          [type, population]
+        else
+          (pois_copy.shift[1] * 1.1 >= population)? nil : [type, population]
+        end
+      end.compact
     end
 
     private
@@ -279,7 +267,7 @@ module WorldGen
         Town.new(
           location: Vector[211, 243],
           mult: 26,
-          game_map: game_map,
+          region: self,
           capital: true,
           name: "Highmoon",
           population: 8000,
@@ -288,7 +276,7 @@ module WorldGen
         Town.new(
           location: Vector[375, 275],
           mult: 26,
-          game_map: game_map,
+          region: self,
           name: "Ordulin",
           population: 36330,
           alignments: [:lawful_good, :good]
@@ -296,7 +284,7 @@ module WorldGen
         Town.new(
           location: Vector[228, 320],
           mult: 26,
-          game_map: game_map,
+          region: self,
           name: "Archenbridge",
           population: 8000,
           alignments: [:lawful_good, :good]
@@ -304,7 +292,7 @@ module WorldGen
         Town.new(
           location: Vector[184, 433],
           mult: 26,
-          game_map: game_map,
+          region: self,
           name: "Daerlun",
           population: 52477,
           alignments: [:lawful_good, :good]
@@ -312,7 +300,7 @@ module WorldGen
         Town.new(
           location: Vector[220, 455],
           mult: 26,
-          game_map: game_map,
+          region: self,
           name: "Urmlaspyr",
           population: 18000,
           alignments: [:lawful_good, :good]
@@ -320,7 +308,7 @@ module WorldGen
         Town.new(
           location: Vector[300, 382],
           mult: 26,
-          game_map: game_map,
+          region: self,
           name: "Saerloon",
           population: 54496,
           alignments: [:lawful_good, :good]
@@ -328,7 +316,7 @@ module WorldGen
         Town.new(
           location: Vector[353, 357],
           mult: 26,
-          game_map: game_map,
+          region: self,
           name: "Selgaunt",
           population: 56514,
           alignments: [:lawful_good, :good]
@@ -336,7 +324,7 @@ module WorldGen
         Town.new(
           location: Vector[438, 254],
           mult: 26,
-          game_map: game_map,
+          region: self,
           name: "Yhaunn",
           population: 25000,
           alignments: [:lawful_good, :good]
@@ -344,7 +332,7 @@ module WorldGen
         Town.new(
           location: Vector[13, 305],
           mult: 26,
-          game_map: game_map,
+          region: self,
           name: "Arabel",
           population: 30600,
           alignments: [:lawful_good, :good]
@@ -352,7 +340,7 @@ module WorldGen
         Town.new(
           location: Vector[25, 225],
           mult: 26,
-          game_map: game_map,
+          region: self,
           name: "Tilverton Scar",
           population: 50,
           alignments: [:lawful_good, :good]
@@ -360,7 +348,7 @@ module WorldGen
         Town.new(
           location: Vector[216, 130],
           mult: 26,
-          game_map: game_map,
+          region: self,
           name: "Ashabenford",
           population: 455,
           alignments: [:lawful_good, :good]
@@ -368,7 +356,7 @@ module WorldGen
         Town.new(
           location: Vector[471, 196],
           mult: 26,
-          game_map: game_map,
+          region: self,
           name: "Chandlerscross",
           population: 5303,
           alignments: [:lawful_good, :good]

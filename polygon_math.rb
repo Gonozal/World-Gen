@@ -87,7 +87,7 @@ module WorldGen
       return -1 if contains? position
       # If POI is given instead of location, get location first
       position = position.location if PointOfInterest === position
-      # Set a ridiculous min distance. and initialize vectors for loop. Any shortcuts?
+      # Set a ridiculous min distance. Any way around this?
       min_dist = 999999999
 
       # Iterate over every edge-point (vertex)
