@@ -88,9 +88,15 @@ module WorldGen
       land_values.each do |land_type, x, y|
         return true if @towns_tbg.empty?
         location = Vector[x, y]
-        next unless legal_new_town_position(used_locations, location, @towns_tbg.first[1])
+        next_town = @towns_tbg.first
+        next unless legal_new_town_position(used_locations, location, next_town[1])
+        if land_type == :town
+          next unless next_town[0] == :town or next_town[0] == :village
+        elsif land_type == :city
+          next unless next_town[0] == :city or next_town[0] == :metropolis
+        end
         population = @towns_tbg.shift[1]
-        region.pois << Town.new({
+        town = Town.new({
           location: location,
           mult: 16,
           region: region,
@@ -98,7 +104,13 @@ module WorldGen
           population: population,
           alignments: [:lawful_good, :good]
         })
+        region.pois << town
         used_locations << location
+
+        # add roads
+        if land_type == :city
+          town.add_road
+        end
       end
       if land_values.empty?
         return true
@@ -114,6 +126,24 @@ module WorldGen
         return false if (used_location - location).magnitude < 60 + population ** 0.5
       end
       true
+    end
+
+    def add_road
+      region.game_map.canvas.redraw :cost
+      region.game_map.set_terrain_costs
+      distance = region.roads.inject([9999, 9999]) do |min, road|
+        [min, road.distance(location)].sort{|a, b| a[0] <=> b[0]}[0]
+      end
+      road = Road.new({
+        mult: 16,
+        start: (location / 16).round,
+        end: (distance[1] / 16).round,
+        game_map: region.game_map
+      })
+
+      road.find_path
+      region.roads << road
+      distance
     end
 
     private

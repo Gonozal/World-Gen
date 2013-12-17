@@ -24,6 +24,7 @@ module WorldGen
     end
 
     def after_initialize
+      LineOfSight.new
       # Offset terrain and calculate movement costs from image
       offset_terrain
       game_map.canvas.draw_terrains :cost
@@ -72,7 +73,6 @@ module WorldGen
         last_size = 7000 - 7000/(i*9) * n + rand(0..1000)
         towns << [:town, last_size]
       end
-      puts towns.size
       towns
     end
 

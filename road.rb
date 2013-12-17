@@ -38,22 +38,27 @@ module WorldGen
     end
 
     # returns distance and closest point on the path
-    def distance
-      min_dist = 9999999999
+    def distance position
+      min_dist = [9999999999, 9999999999]
       path.each_cons(2) do |points|
         c_v, o_v = *points
-        r = ((c_v - o_v) * (position - o_v)) / (position - o_v).magnitude
+
+        a = o_v - c_v
+        b = position - c_v
+
+        r = (a * b) / a.magnitude
 
         if r < 0
-          dist = [(position - o_v).magnitude, o_v]
-        elsif r > 1
-          dist = [(c_v - position).magnitude, c_v]
+          dist = [b.magnitude.round(1), c_v]
+        elsif r >= a.magnitude
+          dist = [(o_v - position).magnitude.round(1), o_v]
         else
-          dist = (position - o_v).magnitude ** 2 - r * (c_v - o_v).magnitude ** 2
-          dist = [dist, ov + r * (c_v - o_v)]
+          dist = b.magnitude ** 2 - r ** 2
+          dist = dist ** 0.5
+          dist = [dist.round(1), c_v + a.normalize * r]
         end
 
-        min_dist = [dist, min_dist].min
+        min_dist = [dist, min_dist].sort{|x, y| x[0] <=> y[0]}[0]
       end
       min_dist
     end

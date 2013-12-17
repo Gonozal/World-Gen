@@ -52,6 +52,7 @@ class Astar
     @goal = [params[:goal][0], params[:goal][1]]
     # puts "start: #{@start[0]}, #{@start[1]}"
     if do_find_path
+      # @path.map{|p| WorldGen::Vector[*p] * 16}
       declutter @path
     else
       return nil
@@ -74,8 +75,8 @@ class Astar
         new_path << skip_to
       end
     end
-    new_path.insert(0, path.first)
-    new_path << path.last
+    new_path.insert(0, WorldGen::Vector[*@start])
+    new_path << WorldGen::Vector[*@goal]
     new_path.compact!
     new_path.map{|e| e * 16 }
   end
@@ -161,7 +162,7 @@ class Astar
       horizadds.each do |h|
         if (v != 0 or h != 0)
           ns = [spot[0] + v, spot[1] + h, ((v*v + h*h)**0.5).round(3)]
-          if (@terrain[ns[0]] and @terrain[ns[0]][ns[1]])
+          if (@terrain[ns[0]] and @terrain[ns[0]][ns[1]] < 240)
             retval << ns
           end
         end

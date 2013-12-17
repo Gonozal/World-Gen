@@ -90,52 +90,6 @@ module WorldGen
       end
     end
 
-    def set_cost
-      return nil if type == :lake or type == :sea
-      (type == :sea)? set_line_cost : set_polygon_cost
-    end
-
-    def set_polygon_cost
-      rect = ((offsets.size > 0)? offsets.last : polygon).bounding_rectangle
-      ((rect[0][0] / 16)..(rect[1][0] / 16)).each do |x|
-        ((rect[0][1] / 16)..(rect[1][1] / 16)).each do |y|
-          [polygon, *offsets].reverse.each_with_index do |p, key|
-            if p.contains? Vector[x * 16, y * 16]
-              game_map.a_star_map[x][y] = costs[offsets.length - key]
-            end
-          end
-        end
-      end
-    end
-
-    def set_line_cost
-      [polygon.vertices, polygon.vertices.first].flatten.each_cons(2) do |p1, p2|
-        p1 /= 16
-        p2 /= 16
-
-        v = p2 - p1
-        n_max = v.to_a.max
-        m_max = v.to_a.min
-        if v[0] > v[1]
-          v[0].times do |n|
-            x = p1[0] + n
-            y = p1[1] + n * m_max / n_max
-            game_map.a_star_map[x][y] = nil
-            game_map.a_star_map[x][y + 1 ] = nil if y + 1 < 803
-            game_map.a_star_map[x + 1][y] = nil if x + 1 < 803
-          end
-        else
-          v[1].times do |n|
-            y = p1[1] + n
-            x = p1[0] + n * m_max / n_max
-            game_map.a_star_map[x][y] = nil
-            game_map.a_star_map[x][y + 1 ] = nil if y + 1 < 803
-            game_map.a_star_map[x + 1][y] = nil if x + 1 < 803
-          end
-        end
-      end
-    end
-
     def add_polygons(p)
       self.polygon = Polygon.new({
         parent: self, 

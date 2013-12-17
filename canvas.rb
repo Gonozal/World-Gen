@@ -255,7 +255,7 @@ module WorldGen
 
     def draw_road(road, draw_type = :map)
       cp = Magick::Draw.new
-      cp.stroke_width(2).fill_opacity(0).stroke_linecap("round").stroke_linejoin("round")
+      cp.stroke_width(1).fill_opacity(0).stroke_linecap("round").stroke_linejoin("round")
       return nil if road.path.blank?
       case draw_type
       when  :cost
