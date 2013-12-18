@@ -24,24 +24,20 @@ module WorldGen
     end
 
     def after_initialize
-      LineOfSight.new
       # Offset terrain and calculate movement costs from image
       offset_terrain
-      game_map.canvas.draw_terrains :cost
-      game_map.canvas.draw_rivers :cost
-      game_map.set_terrain_costs
+      game_map.window.action_queue << {redraw: :map}
+      game_map.window.action_queue << {draw: [:terrains, :cost]}
+      game_map.window.action_queue << {draw: [:rivers, :cost]}
+      game_map.window.action_queue << {terrain_costs: nil}
       update_roads
+      game_map.window.action_queue << {redraw: :land_value}
+      game_map.window.action_queue << {redraw: :town_distance}
+      game_map.window.action_queue << {redraw: :city_distance}
+      game_map.window.action_queue << {land_values: nil}
 
-      # roads.last.path = IMPORTED_PATH.map{|e| Vector[*e] * 16 }
-      # Update land values and eligible places for towns (based on distance from roads)
-      game_map.canvas.redraw :land_value
-      game_map.canvas.redraw :town_distance
-      game_map.canvas.redraw :city_distance
-      game_map.set_land_values
-
-      # generate towns and decide which towns to show
-      Town.generate(game_map.land_values, self, :city)
-      self.visible_pois = pois.select { |poi| poi.draw? }
+      game_map.window.action_queue << { generate_towns: [self, :city] }
+      # self.visible_pois = pois.select { |poi| poi.draw? }
     end
 
     def largest_town
@@ -91,13 +87,15 @@ module WorldGen
     private
     def offset_terrain
       terrain.each do |t|
-        t.add_offsets
+        # t.add_offsets
+        game_map.window.action_queue << {offset: t}
       end
     end
 
     def update_roads
       roads.each do |r|
-        r.find_path
+        game_map.window.action_queue << {path: r}
+        # r.find_path
       end
     end
 

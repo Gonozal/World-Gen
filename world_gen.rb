@@ -12,12 +12,13 @@ module WorldGen
     attr_accessor :zoom_pause
     attr_accessor :draw_mode
     attr_accessor :maps
+    attr_accessor :action_queue
 
     def initialize
       self.zoom_pause, @last_frame = 0.0, 0.0
       self.draw_mode = [:map]
       self.maps = {}
-
+      self.action_queue = WorldGen::ActionQueue.new
       @window = self
       @gm = GameMap.new self
       @detail_window = @gm.new_detail_window
@@ -31,6 +32,25 @@ module WorldGen
     def update
       self.zoom_pause -= delta
       @gm.gradually_initialize
+
+      return true if action_queue.empty?
+      t = Time.now
+      until Time.now - t > 0.1 or action_queue.empty?
+        action = action_queue.pop.first
+        case action.first
+        when :draw then @canvas.draw(*action.last)
+        when :redraw then @canvas.redraw action.last
+        when :path
+          action.last.find_path
+          @canvas.draw action.last, :map
+        when :offset then action.last.add_offsets
+        when :terrain_costs then @gm.set_terrain_costs
+        when :land_values then @gm.set_land_values
+        when :generate_towns
+          towns = Town.generate(@gm.land_values, *action.last).select{|town| town.draw?}
+          @canvas.draw towns, :map
+        end
+      end
     end
 
     def draw
@@ -79,7 +99,7 @@ module WorldGen
     end
 
     def redraw_map
-      @canvas.redraw draw_mode.last
+      action_queue << {redraw: draw_mode.last}
       @details = Gosu::Image.new(self, @detail_window.image, false)
     end
 

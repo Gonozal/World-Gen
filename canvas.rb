@@ -18,6 +18,29 @@ module WorldGen
       initialize_images
     end
 
+    def draw(object, type)
+      case object
+      when :terrains
+        draw_terrains type
+      when :rivers
+        draw_rivers type
+      when Road
+        draw_road object, type
+      when Terrain
+        cp = Magick::Draw.new
+        draw_terrain object, cp, type
+        cp.draw images[type]
+      when Array
+        if Town === object.first
+          cp = Magick::Draw.new
+          object.each do |town|
+            draw_poi(town, cp)
+          end
+          cp.draw images[type]
+        end
+      end
+    end
+
 
     def initialize_images
       self.images[:map] = Magick::Image.new(size + 1, size + 1)

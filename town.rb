@@ -84,9 +84,14 @@ module WorldGen
 
     def self.generate(land_values, region, type)
       @towns_tbg ||= region.needed_towns
+      new_towns = []
       used_locations = []
       land_values.each do |land_type, x, y|
-        return true if @towns_tbg.empty?
+        if @towns_tbg.empty?
+          region.visible_pois = region.pois.select { |poi| poi.draw? }
+          region.game_map.window.action_queue << { redraw: :map }
+          return []
+        end
         location = Vector[x, y]
         next_town = @towns_tbg.first
         next unless legal_new_town_position(used_locations, location, next_town[1])
@@ -104,6 +109,7 @@ module WorldGen
           population: population,
           alignments: [:lawful_good, :good]
         })
+        new_towns << town
         region.pois << town
         used_locations << location
 
@@ -113,11 +119,14 @@ module WorldGen
         end
       end
       if land_values.empty?
-        return true
+        region.visible_pois = region.pois.select { |poi| poi.draw? }
+        region.game_map.window.action_queue << { redraw: :map }
+        return []
       else
-        region.game_map.canvas.redraw :land_value
-        region.game_map.set_land_values
-        generate(region.game_map.land_values, region, type)
+        region.game_map.window.action_queue << { redraw: :land_value }
+        region.game_map.window.action_queue << { land_values: nil }
+        region.game_map.window.action_queue << { generate_towns: [region, type] }
+        return new_towns
       end
     end
 
